@@ -19,6 +19,12 @@
   .status .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#666;margin-right:6px;vertical-align:middle;}
   .status.on .dot{background:var(--ok);box-shadow:0 0 8px var(--ok);}
 
+  #lanbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#1f1526;border:1px solid var(--line);
+    border-left:4px solid var(--maroon2);border-radius:10px;padding:11px 15px;margin-bottom:16px;}
+  #lanbar b{font-size:14px;}
+  #lanbar code{font-size:16px;font-weight:800;color:#ffd76a;background:#0e0a13;padding:6px 12px;border-radius:7px;}
+  #lan-copy{padding:7px 13px;}
+
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px;align-items:start;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 17px;}
   .card.wide{grid-column:1 / -1;}
@@ -91,6 +97,13 @@
     <a href="/?edit=1" target="_blank">오버레이(편집) ↗</a>
   </div>
 </header>
+
+<div id="lanbar">
+  <b>📺 다른 컴퓨터(vMix PC)에서 오버레이 열 주소</b>
+  <code id="lan-overlay">http://…</code>
+  <button class="btn-ghost" id="lan-copy">복사</button>
+  <span class="hint" style="margin:0">vMix → Web Browser 입력에 이 주소 + 1920×1080. 같은 와이파이/공유기여야 합니다.</span>
+</div>
 
 <div class="grid">
 
@@ -483,10 +496,24 @@
     await update({ __reset: true });
   });
 
+  // 다른 PC 오버레이 주소 표시 + 복사
+  function updateLanBar(s) {
+    const srv = s && s._server;
+    const url = srv ? `http://${srv.lan}:${srv.port}/` : (location.origin + "/");
+    const el = $("#lan-overlay");
+    if (el && el.textContent !== url) el.textContent = url;
+  }
+  $("#lan-copy").addEventListener("click", async () => {
+    const url = $("#lan-overlay").textContent;
+    try { await navigator.clipboard.writeText(url); } catch {}
+    const b = $("#lan-copy"); const t = b.textContent; b.textContent = "복사됨!";
+    setTimeout(() => (b.textContent = t), 1200);
+  });
+
   // SSE
   const es = new EventSource("/events");
   es.onopen = () => { statusEl.classList.add("on"); statusTxt.textContent = "연결됨"; };
-  es.onmessage = (e) => { try { state = JSON.parse(e.data); fillForm(state); tickTimer(); } catch {} };
+  es.onmessage = (e) => { try { state = JSON.parse(e.data); fillForm(state); tickTimer(); updateLanBar(state); } catch {} };
   es.onerror = () => { statusEl.classList.remove("on"); statusTxt.textContent = "연결 끊김 — 재연결 중"; };
 
   buildLayoutPanel();

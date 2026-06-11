@@ -11,9 +11,25 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const dgram = require("dgram");
+const os = require("os");
 
 const PORT = process.env.PORT || 8093;
 const DIR = __dirname;
+
+// 같은 네트워크의 다른 PC에서 접속할 LAN IP (예: 192.168.0.x)
+function lanIP() {
+  const ifs = os.networkInterfaces();
+  // en0(보통 Wi-Fi/이더넷) 우선, 없으면 첫 IPv4 비내부 주소
+  const cands = [];
+  for (const [name, addrs] of Object.entries(ifs)) {
+    for (const a of addrs || []) {
+      if (a.family === "IPv4" && !a.internal) cands.push({ name, address: a.address });
+    }
+  }
+  const en = cands.find((c) => c.name === "en0") || cands.find((c) => /^en|eth|wl/.test(c.name)) || cands[0];
+  return en ? en.address : "localhost";
+}
+const LAN_IP = lanIP();
 const STATE_FILE = path.join(DIR, ".state.json");
 
 // ── 기본 상태 ───────────────────────────────────────────────
@@ -355,18 +371,30 @@ function withClock(s) {
   const mm = String(Math.floor(sec / 60)).padStart(2, "0");
   const ss = String(Math.floor(sec % 60)).padStart(2, "0");
   const label = s.timer.half === 2 ? s.timer.label2 : s.timer.label1;
-  return { ...s, _clock: { sec, text: `${label} ${mm}:${ss}`, running: s.timer.running, startedAt: s.timer.startedAt, elapsedSec: s.timer.elapsedSec } };
+  return {
+    ...s,
+    _clock: { sec, text: `${label} ${mm}:${ss}`, running: s.timer.running, startedAt: s.timer.startedAt, elapsedSec: s.timer.elapsedSec },
+    _server: { lan: LAN_IP, port: PORT },   // 다른 PC 접속 주소 안내용
+  };
 }
 
 // 라이브 동기화 + 뉴스 주기 갱신
 setInterval(() => { if (state.api.liveSync && state.api.matchId) syncMatch().catch(() => {}); }, 20000);
 setInterval(() => refreshNews().catch(() => {}), 5 * 60 * 1000);
 
-server.listen(PORT, () => {
+// 0.0.0.0 → 같은 네트워크의 다른 PC에서도 접속 가능
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`\n  ⚽  wc-overlay 실행 중`);
-  console.log(`  ──────────────────────────────────────────`);
-  console.log(`  오버레이 (vMix):  http://localhost:${PORT}/`);
-  console.log(`  컨트롤 페이지  :  http://localhost:${PORT}/control`);
-  console.log(`  ──────────────────────────────────────────\n`);
+  console.log(`  ──────────────────────────────────────────────────`);
+  console.log(`  [이 맥에서]`);
+  console.log(`    컨트롤 페이지 :  http://localhost:${PORT}/control`);
+  console.log(`    오버레이      :  http://localhost:${PORT}/`);
+  console.log(`  [다른 컴퓨터(같은 와이파이/공유기)에서 — vMix PC 등]`);
+  console.log(`    오버레이      :  http://${LAN_IP}:${PORT}/`);
+  console.log(`    컨트롤        :  http://${LAN_IP}:${PORT}/control`);
+  console.log(`  ──────────────────────────────────────────────────`);
+  console.log(`  ※ 다른 PC에서 안 열리면 맥 '시스템 설정 > 네트워크 > 방화벽'에서`);
+  console.log(`     node 들어오는 연결 허용 (또는 방화벽 잠시 끄기).`);
+  console.log(`  ──────────────────────────────────────────────────\n`);
   refreshNews().catch(() => {});
 });
