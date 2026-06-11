@@ -44,7 +44,7 @@ const DEFAULT_STATE = {
     show: false,
     headline: "골! 대한민국",
     minute: "0'",
-    autoHideSec: 6,          // 0이면 수동
+    autoHideSec: 3,          // 득점 후 3초 뒤 자동 숨김 (0이면 수동)
   },
   goallog: {
     show: true,
