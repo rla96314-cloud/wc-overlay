@@ -30,6 +30,7 @@ function lanIP() {
   return en ? en.address : "localhost";
 }
 const LAN_IP = lanIP();
+let activePort = Number(PORT) || 8093;   // 포트 충돌 시 자동으로 다음 포트 사용
 const STATE_FILE = path.join(DIR, ".state.json");
 
 // ── 기본 상태 ───────────────────────────────────────────────
@@ -374,7 +375,7 @@ function withClock(s) {
   return {
     ...s,
     _clock: { sec, text: `${label} ${mm}:${ss}`, running: s.timer.running, startedAt: s.timer.startedAt, elapsedSec: s.timer.elapsedSec },
-    _server: { lan: LAN_IP, port: PORT },   // 다른 PC 접속 주소 안내용
+    _server: { lan: LAN_IP, port: activePort },   // 다른 PC 접속 주소 안내용
   };
 }
 
@@ -383,18 +384,41 @@ setInterval(() => { if (state.api.liveSync && state.api.matchId) syncMatch().cat
 setInterval(() => refreshNews().catch(() => {}), 5 * 60 * 1000);
 
 // 0.0.0.0 → 같은 네트워크의 다른 PC에서도 접속 가능
-server.listen(PORT, "0.0.0.0", () => {
+server.on("listening", () => {
+  const port = activePort;
   console.log(`\n  ⚽  wc-overlay 실행 중`);
   console.log(`  ──────────────────────────────────────────────────`);
   console.log(`  [이 맥에서]`);
-  console.log(`    컨트롤 페이지 :  http://localhost:${PORT}/control`);
-  console.log(`    오버레이      :  http://localhost:${PORT}/`);
+  console.log(`    컨트롤 페이지 :  http://localhost:${port}/control`);
+  console.log(`    오버레이      :  http://localhost:${port}/`);
   console.log(`  [다른 컴퓨터(같은 와이파이/공유기)에서 — vMix PC 등]`);
-  console.log(`    오버레이      :  http://${LAN_IP}:${PORT}/`);
-  console.log(`    컨트롤        :  http://${LAN_IP}:${PORT}/control`);
+  console.log(`    오버레이      :  http://${LAN_IP}:${port}/`);
+  console.log(`    컨트롤        :  http://${LAN_IP}:${port}/control`);
   console.log(`  ──────────────────────────────────────────────────`);
   console.log(`  ※ 다른 PC에서 안 열리면 맥 '시스템 설정 > 네트워크 > 방화벽'에서`);
   console.log(`     node 들어오는 연결 허용 (또는 방화벽 잠시 끄기).`);
   console.log(`  ──────────────────────────────────────────────────\n`);
   refreshNews().catch(() => {});
 });
+function startListening(port) {
+  activePort = port;
+  server.listen(port, "0.0.0.0");
+}
+server.on("error", (e) => {
+  if (e.code === "EADDRINUSE") {
+    const used = activePort;
+    if (used - (Number(PORT) || 8093) < 10) {
+      console.log(`  ⚠  포트 ${used} 가 이미 사용 중 → ${used + 1} 로 다시 시도합니다…`);
+      setTimeout(() => startListening(used + 1, 0), 200);
+    } else {
+      console.log(`\n  ✖  사용 가능한 포트를 찾지 못했습니다 (${PORT}~${used}).`);
+      console.log(`     이미 wc-overlay가 켜져 있을 수 있어요. 기존 창을 닫거나,`);
+      console.log(`     다른 포트로 실행: PORT=9100 node server.js\n`);
+      process.exit(1);
+    }
+  } else {
+    console.log("서버 오류:", e.message);
+    process.exit(1);
+  }
+});
+startListening(Number(PORT) || 8093);
