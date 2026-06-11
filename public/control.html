@@ -308,12 +308,16 @@
     <div class="grid" style="margin-top:12px">
       <div class="card" style="background:#170f1e">
         <div style="font-weight:800;margin-bottom:8px;color:var(--home)">홈</div>
-        <div class="row"><div class="field w-sm"><label>포메이션</label><input list="formlist" data-k="formation.homeFormation"></div></div>
+        <div class="row"><div class="field w-sm"><label>포메이션</label><input list="formlist" data-k="formation.homeFormation"></div>
+          <div class="field w-sm"><label>유니폼색</label><input type="color" data-k="formation.homeColor.fill"></div>
+          <div class="field w-sm"><label>번호색</label><input type="color" data-k="formation.homeColor.text"></div></div>
         <div class="field"><label>선수 (한 줄에 "번호 이름" · GK부터 11명)</label><textarea data-players="home" rows="11" placeholder="1 김승규&#10;2 김문환&#10;..."></textarea></div>
       </div>
       <div class="card" style="background:#170f1e">
         <div style="font-weight:800;margin-bottom:8px;color:var(--away)">원정</div>
-        <div class="row"><div class="field w-sm"><label>포메이션</label><input list="formlist" data-k="formation.awayFormation"></div></div>
+        <div class="row"><div class="field w-sm"><label>포메이션</label><input list="formlist" data-k="formation.awayFormation"></div>
+          <div class="field w-sm"><label>유니폼색</label><input type="color" data-k="formation.awayColor.fill"></div>
+          <div class="field w-sm"><label>번호색</label><input type="color" data-k="formation.awayColor.text"></div></div>
         <div class="field"><label>선수 (한 줄에 "번호 이름" · GK부터 11명)</label><textarea data-players="away" rows="11" placeholder="1 ...&#10;2 ..."></textarea></div>
       </div>
     </div>

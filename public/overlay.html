@@ -230,27 +230,39 @@
   const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
 
   // ── 포메이션 보드 ──
+  // 선수를 줄(라인)로 묶음: grid("줄:위치")가 있으면 그걸로 정확히, 없으면 포메이션 문자열로
   function formationRows(formStr, players) {
     const nums = String(formStr || "").split("-").map((n) => parseInt(n, 10)).filter((n) => n > 0);
-    const lines = [1, ...nums]; // GK + 각 줄
+    const lines = [1, ...nums];
     const rows = []; let idx = 0;
     for (const cnt of lines) { rows.push(players.slice(idx, idx + cnt)); idx += cnt; }
     if (idx < players.length && rows.length) rows[rows.length - 1] = rows[rows.length - 1].concat(players.slice(idx));
     return rows;
   }
-  function renderFormationTeam(players, formStr, side) {
-    const rows = formationRows(formStr, players || []);
-    const L = rows.length, span = [6, 47];
+  function teamRows(players, formStr) {
+    const ps = players || [];
+    if (ps.some((p) => p.grid)) {
+      const byRow = {};
+      ps.forEach((p) => { const g = String(p.grid).split(":"); const r = parseInt(g[0], 10) || 1, c = parseInt(g[1], 10) || 1; (byRow[r] = byRow[r] || []).push({ p, c }); });
+      return Object.keys(byRow).map(Number).sort((a, b) => a - b).map((r) => byRow[r].sort((a, b) => a.c - b.c).map((o) => o.p));
+    }
+    return formationRows(formStr, ps);
+  }
+  function renderFormationTeam(players, formStr, side, color) {
+    const rows = teamRows(players, formStr);
+    const L = rows.length, span = [7, 46];
+    const fill = color && color.fill, text = color && color.text;
     let html = "";
     rows.forEach((line, ci) => {
-      let x;
       const off = L > 1 ? (span[1] - span[0]) * ci / (L - 1) : 0;
-      x = side === "home" ? span[0] + off : (100 - span[0]) - off;
+      const x = side === "home" ? span[0] + off : (100 - span[0]) - off;
       const n = line.length;
       line.forEach((p, k) => {
-        const y = n > 1 ? (13 + (87 - 13) * k / (n - 1)) : 50;
-        html += `<div class="fm-player ${side}" style="left:${x}%;top:${y}%">
-          <div class="fm-dot">${p.num ?? ""}</div>${p.name ? `<div class="fm-nm">${esc(p.name)}</div>` : ""}</div>`;
+        const y = n > 1 ? (15 + (85 - 15) * k / (n - 1)) : 50;   // 줄 안에서 균등·대칭 배치
+        const dot = `${fill ? `background:${fill};` : ""}${text ? `color:${text};` : ""}`;
+        html += `<div class="fm-player ${side}" style="left:${x}%;top:${y}%">` +
+          `<div class="fm-dot" style="${dot}">${p.num ?? ""}</div>` +
+          `${p.name ? `<div class="fm-nm">${esc(p.name)}</div>` : ""}</div>`;
       });
     });
     return html;
@@ -265,8 +277,8 @@
     // 선수 마커만 갈아끼움(라인/박스 정적 요소는 유지)
     pitch.querySelectorAll(".fm-player").forEach((e) => e.remove());
     pitch.insertAdjacentHTML("beforeend",
-      renderFormationTeam(f.homePlayers, f.homeFormation, "home") +
-      renderFormationTeam(f.awayPlayers, f.awayFormation, "away"));
+      renderFormationTeam(f.homePlayers, f.homeFormation, "home", f.homeColor) +
+      renderFormationTeam(f.awayPlayers, f.awayFormation, "away", f.awayColor));
   }
 
   // 스코어 예측: 내 스코어보드(실제)와 비교 → 실제가 예측을 넘어서면 실패(회색), 현재 일치면 적중(금색)

@@ -110,6 +110,8 @@ const DEFAULT_STATE = {
     show: false,
     homeFormation: "4-3-3",
     awayFormation: "4-3-3",
+    homeColor: { fill: "#2552ab", text: "#ffffff" },   // 유니폼/번호 색 (API 자동 또는 수동 지정)
+    awayColor: { fill: "#ab2727", text: "#ffffff" },
     // 선수 배열: [GK, 수비줄…, 미드줄…, 공격줄…] 순서 (포메이션 줄 합 + GK = 11)
     homePlayers: [
       { num: 1, name: "김승규" }, { num: 2, name: "김문환" }, { num: 4, name: "김민재" },
@@ -356,13 +358,18 @@ async function loadLineups() {
   if (!r.ok) throw new Error(`API-Football ${r.status}`);
   const data = await r.json();
   const arr = data.response || [];
-  if (!arr.length) throw new Error("라인업 데이터가 없습니다 (경기 전이거나 미지원).");
-  const toPlayers = (xi) => (xi || []).map((p) => ({ num: p.player?.number ?? "", name: p.player?.name || "" }));
+  if (!arr.length) throw new Error("라인업이 아직 없습니다 — 보통 킥오프 ~1시간 전부터 제공됩니다.");
+  const toPlayers = (xi) => (xi || []).map((p) => ({
+    num: p.player?.number ?? "", name: p.player?.name || "", grid: p.player?.grid || "", pos: p.player?.pos || "",
+  }));
+  const toColor = (t) => { const c = t.team?.colors?.player; return c && c.primary ? { fill: "#" + c.primary, text: "#" + (c.number || "ffffff") } : null; };
   const home = arr[0], away = arr[1] || {};
   if (home.formation) state.formation.homeFormation = home.formation;
   if (home.startXI) state.formation.homePlayers = toPlayers(home.startXI);
   if (away.formation) state.formation.awayFormation = away.formation;
   if (away.startXI) state.formation.awayPlayers = toPlayers(away.startXI);
+  const hc = toColor(home); if (hc) state.formation.homeColor = hc;
+  const ac = toColor(away); if (ac) state.formation.awayColor = ac;
   state.formation.show = true;
   saveState(state); broadcast();
   return { home: home.team?.name, away: away.team?.name, homeFormation: home.formation, awayFormation: away.formation };
