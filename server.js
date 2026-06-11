@@ -90,9 +90,12 @@ const DEFAULT_STATE = {
   },
   osc: {
     enabled: false,            // 전체 ON/OFF
-    targets: [                 // 여러 대상으로 동시 전송 가능
-      { enabled: true, host: "127.0.0.1", port: 9000, addrHome: "/goal/home", addrAway: "/goal/away" },
-    ],
+    host: "127.0.0.1",         // 대상 IP (공통)
+    port: 9000,                // 포트 (공통)
+    cues: {                    // 득점 트리거별 큐: 각 메시지를 ms 지연 후 전송
+      home: [ { ms: 0, addr: "/goal/home" } ],
+      away: [ { ms: 0, addr: "/goal/away" } ],
+    },
   },
   api: {
     token: "",
@@ -152,19 +155,24 @@ function oscString(s) {
   const pad = (4 - (withNul.length % 4)) % 4;
   return Buffer.concat([withNul, Buffer.alloc(pad)]);
 }
+function sendOscMessage(host, port, addr) {
+  try {
+    const packet = Buffer.concat([oscString(addr), oscString(",")]); // 주소 + 빈 타입태그
+    oscSock.send(packet, port, host, (e) => { if (e) console.log("OSC 전송 실패:", e.message); });
+    console.log(`OSC → ${host}:${port}  ${addr}`);
+  } catch (e) { console.log("OSC 오류:", e.message); }
+}
+// 득점 트리거 → 해당 팀 큐를 ms 타이밍에 맞춰 순서대로 전송
 function sendOSCForTeam(team) {
   if (!state.osc.enabled) return;
-  for (const t of state.osc.targets || []) {
-    if (!t || t.enabled === false) continue;
-    const addr = team === "home" ? t.addrHome : t.addrAway;
-    if (!addr) continue;
-    try {
-      const packet = Buffer.concat([oscString(addr), oscString(",")]); // 주소 + 빈 타입태그
-      oscSock.send(packet, Number(t.port) || 9000, t.host || "127.0.0.1", (e) => {
-        if (e) console.log("OSC 전송 실패:", e.message);
-      });
-      console.log(`OSC → ${t.host}:${t.port}  ${addr}`);
-    } catch (e) { console.log("OSC 오류:", e.message); }
+  const host = state.osc.host || "127.0.0.1";
+  const port = Number(state.osc.port) || 9000;
+  const cue = (state.osc.cues && state.osc.cues[team]) || [];
+  for (const item of cue) {
+    if (!item || !item.addr) continue;
+    const ms = Math.max(0, Number(item.ms) || 0);
+    if (ms === 0) sendOscMessage(host, port, item.addr);
+    else setTimeout(() => sendOscMessage(host, port, item.addr), ms);
   }
 }
 

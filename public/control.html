@@ -79,9 +79,14 @@
   .logrow .side.home{background:var(--home);} .logrow .side.away{background:var(--away);}
   .logrow .del{flex:0 0 auto;background:#3a2a32;padding:7px 10px;}
 
-  .osc-row{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:9px;background:#170f1e;}
-  .osc-row .del{flex:0 0 auto;background:#3a2a32;padding:7px 10px;border-radius:8px;}
-  #osc-add{margin-bottom:4px;}
+  .cue-title{font-weight:800;font-size:13px;margin:12px 0 7px;display:flex;align-items:center;gap:8px;}
+  .cue-title.home{color:var(--home);} .cue-title.away{color:var(--away);}
+  .cue-title span{font-size:11px;color:var(--muted);font-weight:600;}
+  .cuerow{display:flex;gap:7px;align-items:center;margin-bottom:7px;}
+  .cuerow .ms{flex:0 0 78px;} .cuerow .addr{flex:1;}
+  .cuerow .unit{color:var(--muted);font-size:12px;font-weight:700;}
+  .cuerow .del{flex:0 0 auto;background:#3a2a32;padding:7px 10px;border-radius:8px;}
+  [data-cueadd]{margin-bottom:4px;}
 
   .btnbar{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center;}
   .apiout{font-size:12px;margin-top:8px;color:var(--muted);}
@@ -167,15 +172,23 @@
     <div class="apiout" id="api-out">무료 토큰 발급: football-data.org/client/register · 라이브 동기화 ON 시 20초마다 점수·득점자 갱신.</div>
   </div>
 
-  <!-- OSC (여러 대상) -->
+  <!-- OSC (단일 대상 + 큐) -->
   <div class="card">
-    <h2>OSC 전송 <span class="tg">득점 시 여러 PC로</span>
+    <h2>OSC 전송 <span class="tg">득점 시 큐 전송</span>
       <label class="sw"><input type="checkbox" data-bool="osc.enabled"><span class="track"></span></label>
     </h2>
-    <div id="osc-list"></div>
-    <button class="btn-ghost" id="osc-add">+ 전송 대상 추가</button>
-    <div class="hint">홈/원정 ＋ 누를 때, 켜진 <b>모든 대상</b>으로 각 주소의 OSC 메시지(인자 없음)를 UDP 전송합니다.
-      같은 IP에 주소만 다르게 여러 개 추가하면 한 번에 여러 메시지를 보낼 수 있습니다.</div>
+    <div class="row">
+      <div class="field"><label>대상 IP (공통)</label><input data-k="osc.host" placeholder="127.0.0.1"></div>
+      <div class="field w-sm"><label>포트 (공통)</label><input type="number" data-k="osc.port"></div>
+    </div>
+    <div class="cue-title home">⚽ 홈 골 큐 <span>홈 ＋ 득점 시</span></div>
+    <div id="cue-home"></div>
+    <button class="btn-ghost" data-cueadd="home">+ 홈 큐 메시지 추가</button>
+    <div class="cue-title away">⚽ 원정 골 큐 <span>원정 ＋ 득점 시</span></div>
+    <div id="cue-away"></div>
+    <button class="btn-ghost" data-cueadd="away">+ 원정 큐 메시지 추가</button>
+    <div class="hint">득점 순간을 0ms 기준으로, 각 메시지를 지정한 <b>ms 시간</b>에 위 IP:포트로 순서대로 전송합니다.
+      (예: 0ms <code>/goal</code> → 500ms <code>/light/on</code> → 2000ms <code>/light/off</code>)</div>
   </div>
 
   <!-- 스코어보드 정보 -->
@@ -308,8 +321,9 @@
     $("#half2").classList.toggle("on", s.timer.half === 2);
     // 득점기록 리스트 (편집 중이면 건드리지 않음)
     if (!$("#log-list").contains(document.activeElement)) renderLog(s);
-    // OSC 대상 목록 (편집 중이면 건드리지 않음)
-    if (!$("#osc-list").contains(document.activeElement)) renderOscTargets(s);
+    // OSC 큐 (편집 중이면 건드리지 않음)
+    if (!$("#cue-home").contains(document.activeElement)) renderCue("home", s);
+    if (!$("#cue-away").contains(document.activeElement)) renderCue("away", s);
     // 스코어 예측 목록
     if (!$("#predict-list").contains(document.activeElement)) renderPredictList(s);
   }
@@ -339,42 +353,38 @@
     update({ predict: { items } });
   }
 
-  // ── OSC 다중 대상 ──
-  function renderOscTargets(s) {
-    const box = $("#osc-list");
-    const targets = (s.osc && s.osc.targets) || [];
+  // ── OSC 큐 (홈/원정 골 트리거, ms 타이밍) ──
+  function renderCue(team, s) {
+    const box = team === "home" ? $("#cue-home") : $("#cue-away");
+    const cue = ((s.osc && s.osc.cues && s.osc.cues[team]) || []);
     const q = (v) => String(v ?? "").replace(/"/g, "&quot;");
-    box.innerHTML = targets.map((t, i) => `
-      <div class="osc-row">
-        <div class="row" style="margin-bottom:7px;align-items:center">
-          <label class="sw" style="margin:0;flex:none"><input type="checkbox" data-osc="${i}.enabled" ${t.enabled !== false ? "checked" : ""}><span class="track"></span></label>
-          <div class="field"><label>대상 IP</label><input data-osc="${i}.host" value="${q(t.host || "127.0.0.1")}"></div>
-          <div class="field w-sm"><label>포트</label><input type="number" data-osc="${i}.port" value="${q(t.port ?? 9000)}"></div>
-          <button class="del" data-oscdel="${i}" title="삭제">✕</button>
-        </div>
-        <div class="row" style="margin-bottom:0">
-          <div class="field"><label>홈 득점 주소</label><input data-osc="${i}.addrHome" value="${q(t.addrHome || "")}"></div>
-          <div class="field"><label>원정 득점 주소</label><input data-osc="${i}.addrAway" value="${q(t.addrAway || "")}"></div>
-        </div>
-      </div>`).join("") || `<div class="hint">전송 대상이 없습니다. 아래 버튼으로 추가하세요.</div>`;
-    box.querySelectorAll("[data-osc]").forEach((inp) => {
-      inp.addEventListener(inp.type === "checkbox" ? "change" : "change", commitOsc);
-    });
-    box.querySelectorAll("[data-oscdel]").forEach((btn) => btn.addEventListener("click", () => {
-      const targets = structuredClone(state.osc.targets || []);
-      targets.splice(Number(btn.dataset.oscdel), 1);
-      update({ osc: { targets } });
+    box.innerHTML = cue.map((c, i) => `
+      <div class="cuerow">
+        <input class="ms field" type="number" min="0" data-cue="${team}.${i}.ms" value="${q(c.ms ?? 0)}">
+        <span class="unit">ms</span>
+        <input class="addr field" data-cue="${team}.${i}.addr" value="${q(c.addr || "")}" placeholder="/주소">
+        <button class="del" data-cuedel="${team}.${i}" title="삭제">✕</button>
+      </div>`).join("") || `<div class="hint" style="margin:0 0 6px">큐가 비어있습니다. 아래 버튼으로 추가하세요.</div>`;
+    box.querySelectorAll("[data-cue]").forEach((inp) => inp.addEventListener("change", () => commitCue(team)));
+    box.querySelectorAll("[data-cuedel]").forEach((btn) => btn.addEventListener("click", () => {
+      const [tm, i] = btn.dataset.cuedel.split(".");
+      const cues = structuredClone(state.osc.cues || { home: [], away: [] });
+      cues[tm].splice(Number(i), 1);
+      update({ osc: { cues } });
     }));
   }
-  function commitOsc() {
+  function commitCue(team) {
+    const box = team === "home" ? $("#cue-home") : $("#cue-away");
     const map = {};
-    $("#osc-list").querySelectorAll("[data-osc]").forEach((inp) => {
-      const [i, prop] = inp.dataset.osc.split(".");
+    box.querySelectorAll("[data-cue]").forEach((inp) => {
+      const [, i, prop] = inp.dataset.cue.split(".");
       map[i] = map[i] || {};
-      map[i][prop] = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (Number(inp.value) || 0) : inp.value);
+      map[i][prop] = prop === "ms" ? Math.max(0, Number(inp.value) || 0) : inp.value;
     });
-    const targets = Object.keys(map).sort((a, b) => a - b).map((k) => map[k]);
-    update({ osc: { targets } });
+    const arr = Object.keys(map).sort((a, b) => a - b).map((k) => ({ ms: 0, addr: "", ...map[k] }));
+    const cues = structuredClone(state.osc.cues || { home: [], away: [] });
+    cues[team] = arr;
+    update({ osc: { cues } });
   }
 
   function renderLog(s) {
@@ -451,13 +461,14 @@
   }
   setInterval(tickTimer, 200);
 
-  // OSC 대상 추가
-  $("#osc-add").addEventListener("click", () => {
-    const targets = structuredClone(state.osc?.targets || []);
-    const n = targets.length + 1;
-    targets.push({ enabled: true, host: "127.0.0.1", port: 9000, addrHome: "/goal/home" + n, addrAway: "/goal/away" + n });
-    update({ osc: { targets } });
-  });
+  // OSC 큐 메시지 추가
+  document.querySelectorAll("[data-cueadd]").forEach((btn) => btn.addEventListener("click", () => {
+    const team = btn.dataset.cueadd;
+    const cues = structuredClone(state.osc?.cues || { home: [], away: [] });
+    cues[team] = cues[team] || [];
+    cues[team].push({ ms: 0, addr: team === "home" ? "/goal/home" : "/goal/away" });
+    update({ osc: { cues } });
+  }));
 
   // 뉴스 갱신
   $("#news-refresh").addEventListener("click", async () => { await post("/news/refresh"); });
