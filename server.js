@@ -65,11 +65,10 @@ const DEFAULT_STATE = {
     headlines: [],
   },
   osc: {
-    enabled: false,
-    host: "127.0.0.1",
-    port: 9000,
-    addrHome: "/goal/home",
-    addrAway: "/goal/away",
+    enabled: false,            // 전체 ON/OFF
+    targets: [                 // 여러 대상으로 동시 전송 가능
+      { enabled: true, host: "127.0.0.1", port: 9000, addrHome: "/goal/home", addrAway: "/goal/away" },
+    ],
   },
   api: {
     token: "",
@@ -129,15 +128,20 @@ function oscString(s) {
   const pad = (4 - (withNul.length % 4)) % 4;
   return Buffer.concat([withNul, Buffer.alloc(pad)]);
 }
-function sendOSC(addr) {
-  if (!state.osc.enabled || !addr) return;
-  try {
-    const packet = Buffer.concat([oscString(addr), oscString(",")]); // 주소 + 빈 타입태그
-    oscSock.send(packet, state.osc.port, state.osc.host, (e) => {
-      if (e) console.log("OSC 전송 실패:", e.message);
-    });
-    console.log(`OSC → ${state.osc.host}:${state.osc.port}  ${addr}`);
-  } catch (e) { console.log("OSC 오류:", e.message); }
+function sendOSCForTeam(team) {
+  if (!state.osc.enabled) return;
+  for (const t of state.osc.targets || []) {
+    if (!t || t.enabled === false) continue;
+    const addr = team === "home" ? t.addrHome : t.addrAway;
+    if (!addr) continue;
+    try {
+      const packet = Buffer.concat([oscString(addr), oscString(",")]); // 주소 + 빈 타입태그
+      oscSock.send(packet, Number(t.port) || 9000, t.host || "127.0.0.1", (e) => {
+        if (e) console.log("OSC 전송 실패:", e.message);
+      });
+      console.log(`OSC → ${t.host}:${t.port}  ${addr}`);
+    } catch (e) { console.log("OSC 오류:", e.message); }
+  }
 }
 
 // ── 득점 처리 ────────────────────────────────────────────────
@@ -157,8 +161,8 @@ function applyScore(team, delta, scorer) {
     state.goal.show = true;
     // 득점 기록
     state.goallog.items.push({ team, teamName, minute, scorer: scorer || "" });
-    // OSC (메시지만)
-    sendOSC(team === "home" ? state.osc.addrHome : state.osc.addrAway);
+    // OSC (메시지만, 켜진 모든 대상으로)
+    sendOSCForTeam(team);
     // 자동 숨김
     if (goalHideTimer) clearTimeout(goalHideTimer);
     if (state.goal.autoHideSec > 0) {

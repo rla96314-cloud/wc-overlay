@@ -37,12 +37,12 @@
     display:flex;align-items:center;justify-content:center;gap:26px;}
   .sb-title .round{color:#e9c87f;font-weight:800;}
   .sb-body{display:flex;align-items:stretch;height:78px;}
-  .sb-team{flex:1;display:flex;align-items:center;background:linear-gradient(180deg,#5f1a37,#4c1429);}
+  .sb-team{flex:1;display:flex;align-items:center;background:linear-gradient(180deg,#5f1a37,#4c1429);min-width:0;}
   .sb-team.away{flex-direction:row-reverse;}
   .sb-team .flag{width:64px;height:46px;font-size:38px;margin:0 14px;box-shadow:0 0 0 2px rgba(255,255,255,.85);}
-  .sb-team .name{color:#fff;font-size:34px;font-weight:800;letter-spacing:.5px;white-space:nowrap;}
-  .sb-team.away .name{margin-right:auto;padding-right:6px;}
-  .sb-team.home .name{margin-left:auto;padding-left:6px;}
+  /* 이름: 남는 칸 가운데 정렬 + 너비 맞춰 글자크기 자동 축소(JS) */
+  .sb-team .name{flex:1;min-width:0;color:#fff;font-size:34px;font-weight:800;letter-spacing:.3px;
+    white-space:nowrap;overflow:hidden;text-align:center;padding:0 8px;line-height:1.1;}
   .sb-score{flex:none;width:200px;display:flex;align-items:center;justify-content:center;gap:18px;
     background:linear-gradient(180deg,#360c1d,#280714);color:#fff;font-size:52px;font-weight:900;}
   .sb-score .diamond{width:26px;height:26px;background:linear-gradient(135deg,#caa15a,#8a6c2f);
@@ -172,6 +172,16 @@
   }
   const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
 
+  // 팀 이름: 칸 너비에 맞춰 글자크기 자동 축소
+  function fitName(id, max = 34, min = 14) {
+    const el = $(id); if (!el) return;
+    el.style.fontSize = max + "px";
+    let s = max, guard = 0;
+    while (s > min && el.scrollWidth > el.clientWidth + 1 && guard++ < 60) { s -= 1; el.style.fontSize = s + "px"; }
+  }
+  function fitNames() { fitName("sb-home-name"); fitName("sb-away-name"); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitNames);
+
   function render(s) {
     S = s;
     // 스코어보드
@@ -180,6 +190,7 @@
     setText("sb-home-score", s.scoreboard.homeScore); setText("sb-away-score", s.scoreboard.awayScore);
     flag("sb-away-flag", s.scoreboard.awayFlag); setText("sb-away-name", s.scoreboard.awayName);
     toggle("scoreboard", s.scoreboard.show);
+    requestAnimationFrame(fitNames);
     // 골
     $("gl-min").innerHTML = String(s.goal.minute || "").replace(/'/g, "<span class='ap'>'</span>");
     setText("gl-headline", s.goal.headline); toggle("goal", s.goal.show);
