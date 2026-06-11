@@ -208,19 +208,22 @@
       <label class="sw"><input type="checkbox" data-bool="sound.enabled"><span class="track"></span></label>
     </h2>
     <datalist id="soundfiles"></datalist>
+    <input type="file" id="sound-file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac" style="display:none">
     <div class="row">
-      <div class="field"><label>홈 골 사운드</label><input list="soundfiles" data-k="sound.home" placeholder="파일명 또는 URL"></div>
+      <div class="field"><label>홈 골 사운드</label><input list="soundfiles" data-k="sound.home" placeholder="파일명·URL 또는 탐색"></div>
+      <button class="btn-ghost" data-soundbrowse="home" style="align-self:flex-end" title="내 PC에서 파일 탐색">📁 탐색</button>
       <button class="btn-ghost" data-soundtest="home" style="align-self:flex-end" title="테스트 재생">▶</button>
     </div>
     <div class="row">
-      <div class="field"><label>원정 골 사운드</label><input list="soundfiles" data-k="sound.away" placeholder="파일명 또는 URL"></div>
+      <div class="field"><label>원정 골 사운드</label><input list="soundfiles" data-k="sound.away" placeholder="파일명·URL 또는 탐색"></div>
+      <button class="btn-ghost" data-soundbrowse="away" style="align-self:flex-end" title="내 PC에서 파일 탐색">📁 탐색</button>
       <button class="btn-ghost" data-soundtest="away" style="align-self:flex-end" title="테스트 재생">▶</button>
     </div>
     <div class="row">
       <div class="field"><label>볼륨 <span id="volval"></span></label><input type="range" min="0" max="1" step="0.05" data-k="sound.volume"></div>
     </div>
-    <div class="hint">사운드 파일은 <code>public/sounds</code> 폴더에 넣으면 목록에 자동으로 떠요(mp3·wav·ogg·m4a). URL도 가능.
-      재생은 <b>오버레이</b>에서 됩니다 → vMix는 자동 재생, 일반 브라우저는 오버레이를 한 번 클릭해야 소리가 납니다. ▶ 로 테스트.</div>
+    <div class="hint"><b>📁 탐색</b>으로 내 PC의 mp3/wav 파일을 골라 올리면 서버에 저장되어 목록에 추가됩니다(다른 PC 오버레이에서도 재생). <code>public/sounds</code> 폴더에 직접 넣어도 됩니다. URL도 가능.
+      재생은 <b>오버레이</b>에서 → vMix는 자동, 일반 브라우저는 오버레이를 한 번 클릭해야 소리가 납니다. ▶ 로 테스트.</div>
   </div>
 
   <!-- 스코어보드 정보 -->
@@ -529,6 +532,28 @@
   document.querySelectorAll("[data-soundtest]").forEach((btn) => btn.addEventListener("click", () => {
     post("/sound/test", { team: btn.dataset.soundtest });
   }));
+  // 📁 탐색: 내 PC 파일 선택 → 업로드 → 해당 팀 사운드로 지정
+  let browseTeam = "home";
+  document.querySelectorAll("[data-soundbrowse]").forEach((btn) => btn.addEventListener("click", () => {
+    browseTeam = btn.dataset.soundbrowse; const fi = $("#sound-file"); fi.value = ""; fi.click();
+  }));
+  $("#sound-file").addEventListener("change", async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    const btns = document.querySelectorAll("[data-soundbrowse]"); btns.forEach((b) => (b.textContent = "⏳ 업로드…"));
+    try {
+      const buf = await f.arrayBuffer();
+      const r = await fetch("/sounds/upload?name=" + encodeURIComponent(f.name), {
+        method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: buf,
+      });
+      const j = await r.json();
+      if (j.ok) {
+        await loadSounds();
+        const patch = {}; setPath(patch, "sound." + browseTeam, j.file); update(patch);
+        const inp = document.querySelector('[data-k="sound.' + browseTeam + '"]'); if (inp) inp.value = j.file;
+      } else alert("업로드 실패: " + j.error);
+    } catch (err) { alert("업로드 오류: " + err.message); }
+    btns.forEach((b) => (b.textContent = "📁 탐색"));
+  });
   loadSounds();
 
   // 뉴스 갱신

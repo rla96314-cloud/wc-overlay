@@ -326,6 +326,25 @@ const server = http.createServer(async (req, res) => {
       try { files = fs.readdirSync(path.join(DIR, "public", "sounds")).filter((f) => /\.(mp3|wav|ogg|m4a|aac)$/i.test(f)); } catch {}
       return json(res, 200, { files });
     }
+    // 사운드 파일 업로드 (내 PC에서 탐색해 올림 → public/sounds 에 저장)
+    if (url === "/sounds/upload" && req.method === "POST") {
+      const qm = (req.url.split("?")[1] || "").match(/(?:^|&)name=([^&]*)/);
+      const raw = qm ? decodeURIComponent(qm[1]) : "upload.bin";
+      const safe = raw.replace(/[\/\\]/g, "").replace(/[^\w.\-가-힣() ]/g, "_").replace(/\.{2,}/g, ".");
+      if (!/\.(mp3|wav|ogg|m4a|aac)$/i.test(safe)) return json(res, 200, { ok: false, error: "오디오 파일(mp3/wav/ogg/m4a)만 가능합니다." });
+      const chunks = []; let size = 0, tooBig = false;
+      req.on("data", (c) => { size += c.length; if (size > 40 * 1024 * 1024) tooBig = true; if (!tooBig) chunks.push(c); });
+      req.on("end", () => {
+        if (tooBig) return json(res, 200, { ok: false, error: "파일이 너무 큽니다 (40MB 초과)." });
+        try {
+          fs.mkdirSync(path.join(DIR, "public", "sounds"), { recursive: true });
+          fs.writeFileSync(path.join(DIR, "public", "sounds", safe), Buffer.concat(chunks));
+          console.log(`사운드 업로드: ${safe} (${size} bytes)`);
+          return json(res, 200, { ok: true, file: safe });
+        } catch (e) { return json(res, 200, { ok: false, error: e.message }); }
+      });
+      return;
+    }
     // 사운드 파일 제공 (/sounds/<파일>)
     if (url.startsWith("/sounds/")) {
       const f = decodeURIComponent(url.slice("/sounds/".length));
