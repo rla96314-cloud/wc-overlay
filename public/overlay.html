@@ -301,11 +301,14 @@
   let tickerSig = "", tickerTimer = null, tickerIdx = 0;
   function setupTicker(s) {
     const track = $("tk-text").parentElement; // .ticker-track
-    const items = (s.ticker.mode === "manual")
+    // 후원(별풍선) 피드 → 뉴스 앞에 끼워 넣어 함께 흐름
+    const feed = (s.ticker.feed || []).map((f) => (typeof f === "string" ? f : f && f.text)).filter(Boolean);
+    const news = (s.ticker.mode === "manual")
       ? String(s.ticker.text || "").split(/\n/).map((x) => x.trim()).filter(Boolean)
       : (s.ticker.headlines || []);
+    const items = [...feed, ...news];
     const rotate = s.ticker.display === "rotate";
-    const sig = JSON.stringify([rotate, s.ticker.rotateSec, s.ticker.mode, s.ticker.text, items]);
+    const sig = JSON.stringify([rotate, s.ticker.rotateSec, items]);
     if (sig === tickerSig) return;   // 설정/내용 변화 없으면 유지(매 SSE마다 리셋 방지)
     tickerSig = sig;
     clearInterval(tickerTimer); tickerTimer = null;
@@ -319,7 +322,7 @@
       if (list.length > 1) tickerTimer = setInterval(show, Math.max(1, Number(s.ticker.rotateSec) || 6) * 1000);
     } else {
       track.classList.remove("rotate"); el.style.opacity = 1;
-      el.textContent = (s.ticker.mode === "manual") ? (s.ticker.text || "") : (items.join("        ·        ") || s.ticker.text || "");
+      el.textContent = items.join("        ·        ") || s.ticker.text || "";
     }
   }
 

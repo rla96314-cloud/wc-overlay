@@ -93,6 +93,7 @@ const DEFAULT_STATE = {
     headlines: [],
     display: "scroll",       // scroll=흐름 / rotate=한 헤드라인씩
     rotateSec: 6,            // rotate 모드 전환 주기(초)
+    feed: [],               // 별풍선 후원이 티커에 끼어 흐르는 임시 항목 [{text,ts}]
   },
   osc: {
     enabled: false,            // 전체 ON/OFF
@@ -145,6 +146,8 @@ const DEFAULT_STATE = {
     template: "🎈 {donor}님 별풍선 {balloons}개 감사합니다! {message}",
     durationSec: 6,
     minBalloons: 0,          // 이 개수 이상만 표시(0=전부)
+    toBanner: true,          // 가운데 배너로 표시
+    toTicker: true,          // 하단 뉴스 티커에 흘려보내기
   },
   donationEvent: { token: 0, text: "", donor: "", balloons: 0, amount: 0, message: "" },
 };
@@ -175,6 +178,7 @@ state.timer.running = false; state.timer.startedAt = null;
 // 재시작 시 감시는 꺼진 상태(수동 시작)
 if (state.weflab) { state.weflab.watching = false; }
 if (state.donation) { state.donation.show = false; }
+if (state.ticker) { state.ticker.feed = []; }   // 후원 피드는 재시작 시 비움
 
 const clients = new Set();
 function broadcast() {
@@ -404,15 +408,23 @@ function fireDonation(ev) {
     .replace(/\{amount\}/g, Number(ev.amount) || 0)
     .replace(/\{message\}/g, ev.message || "")
     .replace(/\s+/g, " ").trim();
-  state.donationEvent = {
-    token: ((state.donationEvent && state.donationEvent.token) || 0) + 1,
-    text, donor: ev.donor || "", balloons, amount: Number(ev.amount) || 0, message: ev.message || "",
-  };
-  state.donation.show = true;
+
+  // 가운데 배너 표시
+  if (state.donation.toBanner !== false) {
+    state.donationEvent = {
+      token: ((state.donationEvent && state.donationEvent.token) || 0) + 1,
+      text, donor: ev.donor || "", balloons, amount: Number(ev.amount) || 0, message: ev.message || "",
+    };
+    state.donation.show = true;
+    if (donationHideTimer) clearTimeout(donationHideTimer);
+    const dur = Number(state.donation.durationSec) || 6;
+    if (dur > 0) donationHideTimer = setTimeout(() => { state.donation.show = false; saveState(state); broadcast(); }, dur * 1000);
+  }
+  // 하단 뉴스 티커에 흘려보내기 (최근 6건 유지)
+  if (state.donation.toTicker !== false) {
+    state.ticker.feed = [{ text, ts: Date.now() }, ...(state.ticker.feed || [])].slice(0, 6);
+  }
   saveState(state); broadcast();
-  if (donationHideTimer) clearTimeout(donationHideTimer);
-  const dur = Number(state.donation.durationSec) || 6;
-  if (dur > 0) donationHideTimer = setTimeout(() => { state.donation.show = false; saveState(state); broadcast(); }, dur * 1000);
 }
 // 위플랩 감시기 이벤트 연결
 if (watcher) {

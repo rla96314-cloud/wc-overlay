@@ -307,6 +307,10 @@
       <div class="field w-sm"><label>최소 별풍선</label><input type="number" data-k="donation.minBalloons"></div>
       <button class="btn-ghost" id="donation-test" style="align-self:flex-end">테스트 표시</button>
     </div>
+    <div class="row" style="align-items:center;gap:16px">
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px"><input type="checkbox" data-bool="donation.toBanner"> 가운데 배너</label>
+      <label style="display:flex;align-items:center;gap:7px;font-size:13px"><input type="checkbox" data-bool="donation.toTicker"> 뉴스 티커에 흘리기</label>
+    </div>
     <div class="apiout" id="weflab-out">위플랩 별풍선 알림(.donation_wrap) 위젯/방송 주소를 넣고 감시 시작 → 별풍선 들어오면 위 문구가 오버레이에 뜹니다. 첫 실행은 puppeteer 설치 필요(start 스크립트가 자동 설치).</div>
   </div>
 
