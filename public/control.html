@@ -290,10 +290,21 @@
     <datalist id="formlist"><option value="4-3-3"></option><option value="4-4-2"></option><option value="4-2-3-1"></option><option value="4-1-4-1"></option><option value="3-4-3"></option><option value="3-5-2"></option><option value="5-3-2"></option></datalist>
     <div class="row">
       <div class="field"><label>API-Football 키 (자동 불러오기)</label><input data-k="api.afKey" placeholder="api-sports.io 무료키"></div>
-      <div class="field w-sm"><label>fixture ID</label><input data-k="api.afFixture" placeholder="예: 1035037"></div>
+    </div>
+    <div class="row">
+      <div class="field w-sm"><label>리그ID</label><input id="af-league" value="1" title="1 = 월드컵"></div>
+      <div class="field w-sm"><label>시즌</label><input id="af-season" value="2026"></div>
+      <div class="field w-sm"><label>날짜(선택)</label><input id="af-date" type="date"></div>
+      <button class="btn-ghost" id="find-fixtures" style="align-self:flex-end">경기 찾기</button>
+    </div>
+    <div class="row">
+      <div class="field"><label>경기 선택 → fixture ID 자동</label><select id="fixture-select"><option value="">— "경기 찾기"를 먼저 누르세요 —</option></select></div>
+    </div>
+    <div class="row">
+      <div class="field w-sm"><label>fixture ID</label><input data-k="api.afFixture" placeholder="자동/직접"></div>
       <button class="btn-primary" id="load-lineups" style="align-self:flex-end">라인업 불러오기</button>
     </div>
-    <div class="apiout" id="fm-out">무료키 발급: dashboard.api-football.com (하루 100회). fixture ID로 포메이션·선발 11명 자동 입력 → 아래에서 수정 가능.</div>
+    <div class="apiout" id="fm-out">① 무료키 발급: dashboard.api-football.com (하루 100회) → 위에 입력. ② <b>경기 찾기</b>로 경기를 고르면 fixture ID 자동 입력. ③ <b>라인업 불러오기</b> → 포메이션·선발 자동(아래서 수정 가능). 리그ID 1=월드컵, 시즌 2026.</div>
     <div class="grid" style="margin-top:12px">
       <div class="card" style="background:#170f1e">
         <div style="font-weight:800;margin-bottom:8px;color:var(--home)">홈</div>
@@ -634,6 +645,30 @@
     const key = ta.dataset.players === "home" ? "homePlayers" : "awayPlayers";
     update({ formation: { [key]: parsePlayers(ta.value) } });
   }));
+  // 포메이션: 경기 찾기 → fixture 선택
+  $("#find-fixtures").addEventListener("click", async () => {
+    const out = $("#fm-out"); out.className = "apiout"; out.textContent = "경기 검색 중…";
+    const j = await post("/api/fixtures", {
+      afKey: getPath(state, "api.afKey"),
+      league: $("#af-league").value.trim(), season: $("#af-season").value.trim(), date: $("#af-date").value,
+    });
+    if (!j.ok) { out.className = "apiout err"; out.textContent = "오류: " + j.error; return; }
+    const sel = $("#fixture-select");
+    const fmt = (x) => {
+      const d = x.date ? new Date(x.date) : null;
+      const ds = d ? `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "";
+      return `${ds}  ${x.home} vs ${x.away} [${x.status}]`;
+    };
+    sel.innerHTML = `<option value="">— ${j.fixtures.length}경기 —</option>` +
+      j.fixtures.map((x) => `<option value="${x.id}">${fmt(x).replace(/"/g, "")}</option>`).join("");
+    out.className = "apiout"; out.textContent = `${j.fixtures.length}경기 찾음. 경기를 선택하면 fixture ID가 채워집니다.`;
+  });
+  $("#fixture-select").addEventListener("change", (e) => {
+    const id = e.target.value; if (!id) return;
+    const inp = document.querySelector('[data-k="api.afFixture"]'); if (inp) inp.value = id;
+    update({ api: { afFixture: id } });
+  });
+
   // 포메이션: API-Football 라인업 불러오기
   $("#load-lineups").addEventListener("click", async () => {
     const out = $("#fm-out"); out.className = "apiout"; out.textContent = "불러오는 중…";

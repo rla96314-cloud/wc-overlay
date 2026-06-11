@@ -324,6 +324,29 @@ async function syncMatch() {
 }
 
 // ── API-Football (포메이션/라인업) ───────────────────────────
+async function afFetch(pathQuery) {
+  if (!state.api.afKey) throw new Error("API-Football 키가 없습니다 (컨트롤에서 입력).");
+  const r = await fetch(`https://v3.football.api-sports.io${pathQuery}`, { headers: { "x-apisports-key": state.api.afKey } });
+  if (!r.ok) throw new Error(`API-Football ${r.status}`);
+  return r.json();
+}
+// 경기 검색 → fixture ID 목록 (리그/시즌 또는 날짜)
+async function findFixtures({ league, season, date }) {
+  const p = new URLSearchParams();
+  if (league) p.set("league", String(league));
+  if (season) p.set("season", String(season));
+  if (date) p.set("date", String(date));
+  if (![...p.keys()].length) throw new Error("리그+시즌 또는 날짜를 입력하세요.");
+  const data = await afFetch(`/fixtures?${p.toString()}`);
+  return (data.response || []).map((f) => ({
+    id: f.fixture?.id,
+    date: f.fixture?.date,
+    status: f.fixture?.status?.short,
+    round: f.league?.round,
+    home: f.teams?.home?.name,
+    away: f.teams?.away?.name,
+  }));
+}
 async function loadLineups() {
   if (!state.api.afKey) throw new Error("API-Football 키가 없습니다 (컨트롤에서 입력).");
   if (!state.api.afFixture) throw new Error("fixture ID가 없습니다.");
@@ -464,6 +487,14 @@ const server = http.createServer(async (req, res) => {
     }
     if (url === "/api/sync" && req.method === "POST") {
       try { await syncMatch(); return json(res, 200, { ok: true }); }
+      catch (e) { return json(res, 200, { ok: false, error: e.message }); }
+    }
+    // 경기 검색 (fixture ID 찾기)
+    if (url === "/api/fixtures" && req.method === "POST") {
+      const body = JSON.parse((await readBody(req)) || "{}");
+      if (body.afKey != null) state.api.afKey = body.afKey;
+      saveState(state);
+      try { const fixtures = await findFixtures(body); return json(res, 200, { ok: true, fixtures }); }
       catch (e) { return json(res, 200, { ok: false, error: e.message }); }
     }
     // 포메이션/라인업 불러오기 (API-Football)
