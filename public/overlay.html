@@ -18,6 +18,9 @@
   .block{position:absolute;transform-origin:top left;}
   .el{transition:opacity .35s ease;}
   .hidden{opacity:0 !important;pointer-events:none;}
+  #sound-unlock{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);display:none;
+    background:rgba(107,31,63,.95);color:#fff;font-size:20px;font-weight:800;padding:12px 22px;
+    border-radius:10px;cursor:pointer;z-index:9999;box-shadow:0 6px 18px rgba(0,0,0,.5);}
 
   /* 편집모드 표시 */
   body.edit .block{outline:2px dashed rgba(255,255,255,.45);cursor:move;}
@@ -148,6 +151,9 @@
 
 </div>
 
+<audio id="goal-audio" preload="auto"></audio>
+<div id="sound-unlock">🔊 클릭하여 사운드 활성화</div>
+
 <script>
   const $ = (id) => document.getElementById(id);
   const setText = (id, v) => { const e = $(id); if (e) e.textContent = v ?? ""; };
@@ -231,7 +237,33 @@
 
     placeBlocks(s);
     document.body.classList.toggle("edit", editMode || !!s.editMode);
+    handleSound(s);
   }
+
+  // ── 골 사운드 재생 ──
+  let lastSoundToken = null;     // 최초 로드값은 재생하지 않음
+  let audioUnlocked = false;
+  const audio = $("goal-audio");
+  function soundURL(src) { return /^https?:/.test(src || "") ? src : ("/sounds/" + encodeURIComponent(src || "")); }
+  function handleSound(s) {
+    const ev = s.soundEvent || { token: 0 };
+    if (lastSoundToken === null) { lastSoundToken = ev.token; return; }
+    if (ev.token === lastSoundToken) return;
+    lastSoundToken = ev.token;
+    if (!s.sound || !s.sound.enabled) return;
+    const src = ev.team === "away" ? s.sound.away : s.sound.home;
+    if (!src) return;
+    audio.src = soundURL(src);
+    audio.volume = Math.max(0, Math.min(1, Number(s.sound.volume) ?? 0.8));
+    audio.currentTime = 0;
+    audio.play().then(() => { audioUnlocked = true; })
+      .catch(() => { if (!audioUnlocked) $("sound-unlock").style.display = "block"; });
+  }
+  // 일반 브라우저 자동재생 차단 대비 — 한 번 클릭으로 해제(vMix는 불필요)
+  $("sound-unlock").addEventListener("click", () => {
+    audio.play().then(() => { audioUnlocked = true; $("sound-unlock").style.display = "none"; }).catch(() => {});
+  });
+  document.addEventListener("click", () => { if (!audioUnlocked) { audio.play().then(() => { audioUnlocked = true; audio.pause(); $("sound-unlock").style.display = "none"; }).catch(() => {}); } }, { once: false });
 
   // 타이머: 로컬 틱(서버 _clock 기준)
   function tickClock() {

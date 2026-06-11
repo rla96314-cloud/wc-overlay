@@ -103,6 +103,13 @@ const DEFAULT_STATE = {
     matchId: "",
     liveSync: false,
   },
+  sound: {                   // 득점 시 재생할 사운드(노래)
+    enabled: true,
+    volume: 0.8,
+    home: "example-goal.wav", // public/sounds 의 파일명 또는 URL (교체 가능)
+    away: "example-goal.wav",
+  },
+  soundEvent: { token: 0, team: "" },  // 득점/테스트 시 증가 → 오버레이가 감지해 재생
 };
 
 function structuredCloneSafe(o) { return JSON.parse(JSON.stringify(o)); }
@@ -195,6 +202,8 @@ function applyScore(team, delta, scorer) {
     state.goallog.items.push({ team, teamName, minute, scorer: scorer || "" });
     // OSC (메시지만, 켜진 모든 대상으로)
     sendOSCForTeam(team);
+    // 사운드 재생 트리거 (오버레이가 감지)
+    state.soundEvent = { token: ((state.soundEvent && state.soundEvent.token) || 0) + 1, team };
     // 자동 숨김
     if (goalHideTimer) clearTimeout(goalHideTimer);
     if (state.goal.autoHideSec > 0) {
@@ -311,6 +320,25 @@ const server = http.createServer(async (req, res) => {
     if (url === "/control" || url === "/control.html") return serveFile(res, "control.html", "text/html; charset=utf-8");
     if (url === "/state") return json(res, 200, withClock(state));
 
+    // 사운드 파일 목록
+    if (url === "/sounds") {
+      let files = [];
+      try { files = fs.readdirSync(path.join(DIR, "public", "sounds")).filter((f) => /\.(mp3|wav|ogg|m4a|aac)$/i.test(f)); } catch {}
+      return json(res, 200, { files });
+    }
+    // 사운드 파일 제공 (/sounds/<파일>)
+    if (url.startsWith("/sounds/")) {
+      const f = decodeURIComponent(url.slice("/sounds/".length));
+      if (f.includes("..") || f.includes("/")) return res.writeHead(403).end("forbidden");
+      try {
+        const data = fs.readFileSync(path.join(DIR, "public", "sounds", f));
+        const ext = (f.split(".").pop() || "").toLowerCase();
+        const mime = { mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4", aac: "audio/aac" }[ext] || "application/octet-stream";
+        res.writeHead(200, { "Content-Type": mime, ...NOCACHE });
+        return res.end(data);
+      } catch { return res.writeHead(404).end("not found"); }
+    }
+
     if (url === "/events") {
       res.writeHead(200, { "Content-Type": "text/event-stream", Connection: "keep-alive", ...NOCACHE });
       res.write(`data: ${JSON.stringify(withClock(state))}\n\n`);
@@ -331,6 +359,14 @@ const server = http.createServer(async (req, res) => {
     if (url === "/score" && req.method === "POST") {
       const { team, delta, scorer } = JSON.parse((await readBody(req)) || "{}");
       applyScore(team === "away" ? "away" : "home", Number(delta) || 0, scorer);
+      return json(res, 200, { ok: true });
+    }
+
+    // 사운드 테스트 재생 (점수/기록 변화 없이 오버레이에서만 재생)
+    if (url === "/sound/test" && req.method === "POST") {
+      const { team } = JSON.parse((await readBody(req)) || "{}");
+      state.soundEvent = { token: ((state.soundEvent && state.soundEvent.token) || 0) + 1, team: team === "away" ? "away" : "home" };
+      broadcast();
       return json(res, 200, { ok: true });
     }
 

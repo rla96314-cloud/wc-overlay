@@ -191,6 +191,27 @@
       (예: 0ms <code>/goal</code> → 500ms <code>/light/on</code> → 2000ms <code>/light/off</code>)</div>
   </div>
 
+  <!-- 골 사운드 -->
+  <div class="card">
+    <h2>골 사운드 <span class="tg">득점 시 노래 재생</span>
+      <label class="sw"><input type="checkbox" data-bool="sound.enabled"><span class="track"></span></label>
+    </h2>
+    <datalist id="soundfiles"></datalist>
+    <div class="row">
+      <div class="field"><label>홈 골 사운드</label><input list="soundfiles" data-k="sound.home" placeholder="파일명 또는 URL"></div>
+      <button class="btn-ghost" data-soundtest="home" style="align-self:flex-end" title="테스트 재생">▶</button>
+    </div>
+    <div class="row">
+      <div class="field"><label>원정 골 사운드</label><input list="soundfiles" data-k="sound.away" placeholder="파일명 또는 URL"></div>
+      <button class="btn-ghost" data-soundtest="away" style="align-self:flex-end" title="테스트 재생">▶</button>
+    </div>
+    <div class="row">
+      <div class="field"><label>볼륨 <span id="volval"></span></label><input type="range" min="0" max="1" step="0.05" data-k="sound.volume"></div>
+    </div>
+    <div class="hint">사운드 파일은 <code>public/sounds</code> 폴더에 넣으면 목록에 자동으로 떠요(mp3·wav·ogg·m4a). URL도 가능.
+      재생은 <b>오버레이</b>에서 됩니다 → vMix는 자동 재생, 일반 브라우저는 오버레이를 한 번 클릭해야 소리가 납니다. ▶ 로 테스트.</div>
+  </div>
+
   <!-- 스코어보드 정보 -->
   <div class="card">
     <h2>스코어보드 <span class="tg">좌상단</span>
@@ -326,6 +347,8 @@
     if (!$("#cue-away").contains(document.activeElement)) renderCue("away", s);
     // 스코어 예측 목록
     if (!$("#predict-list").contains(document.activeElement)) renderPredictList(s);
+    // 볼륨 표시
+    const volEl = $("#volval"); if (volEl) volEl.textContent = Math.round((Number(s.sound?.volume) ?? 0.8) * 100) + "%";
   }
 
   // ── 스코어 예측 (6인) ──
@@ -418,11 +441,13 @@
   let timer = null;
   document.addEventListener("input", (e) => {
     const inp = e.target.closest("[data-k]"); if (!inp) return;
+    const isNum = inp.type === "number" || inp.type === "range";
+    if (inp.dataset.k === "sound.volume") { const sv = $("#volval"); if (sv) sv.textContent = Math.round(Number(inp.value) * 100) + "%"; }
     clearTimeout(timer);
     timer = setTimeout(() => {
-      let v = inp.value; if (inp.type === "number") v = v === "" ? 0 : Number(v);
+      let v = inp.value; if (isNum) v = v === "" ? 0 : Number(v);
       const patch = {}; setPath(patch, inp.dataset.k, v); update(patch);
-    }, 300);
+    }, inp.type === "range" ? 120 : 300);
   });
   // 셀렉트 즉시
   document.querySelectorAll('select[data-k]').forEach((sel) => sel.addEventListener("change", () => {
@@ -469,6 +494,18 @@
     cues[team].push({ ms: 0, addr: team === "home" ? "/goal/home" : "/goal/away" });
     update({ osc: { cues } });
   }));
+
+  // 골 사운드: 파일목록 + 테스트 재생
+  async function loadSounds() {
+    try {
+      const r = await fetch("/sounds"); const j = await r.json();
+      $("#soundfiles").innerHTML = (j.files || []).map((f) => `<option value="${f.replace(/"/g, "&quot;")}">`).join("");
+    } catch {}
+  }
+  document.querySelectorAll("[data-soundtest]").forEach((btn) => btn.addEventListener("click", () => {
+    post("/sound/test", { team: btn.dataset.soundtest });
+  }));
+  loadSounds();
 
   // 뉴스 갱신
   $("#news-refresh").addEventListener("click", async () => { await post("/news/refresh"); });
