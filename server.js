@@ -371,12 +371,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (url === "/timer" && req.method === "POST") {
-      const { cmd, half } = JSON.parse((await readBody(req)) || "{}");
+      const { cmd, half, sec } = JSON.parse((await readBody(req)) || "{}");
       const t = state.timer;
       if (cmd === "start" && !t.running) { t.startedAt = Date.now(); t.running = true; }
       else if (cmd === "pause" && t.running) { t.elapsedSec = currentSec(); t.running = false; t.startedAt = null; }
       else if (cmd === "reset") { t.elapsedSec = 0; t.running = false; t.startedAt = null; }
       else if (cmd === "half") { if (half === 1 || half === 2) t.half = half; }
+      else if (cmd === "set") { t.elapsedSec = Math.max(0, Number(sec) || 0); if (t.running) t.startedAt = Date.now(); } // 직접 시간 설정
       saveState(state); broadcast();
       return json(res, 200, { ok: true, timer: t });
     }

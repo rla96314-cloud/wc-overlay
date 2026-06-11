@@ -151,7 +151,18 @@
       <button class="btn-pause" id="t-pause">⏸ 정지</button>
       <button class="btn-ghost" id="t-reset">⟲ 리셋</button>
     </div>
-    <div class="hint">시작을 누르면 타이머가 흐르고, 골 알림 시간은 이 시계 기준으로 자동 표기됩니다. 전·후반은 따로 관리(후반은 45분+).</div>
+    <div class="row" style="margin-top:10px;align-items:flex-end">
+      <div class="field w-sm"><label>분</label><input type="number" id="set-min" min="0" placeholder="0"></div>
+      <div class="field w-sm"><label>초</label><input type="number" id="set-sec" min="0" max="59" placeholder="0"></div>
+      <button class="btn-primary" id="t-set">시간 설정</button>
+    </div>
+    <div class="timer-btns" style="margin-top:8px">
+      <button class="btn-ghost" data-tadj="-60">−1분</button>
+      <button class="btn-ghost" data-tadj="-10">−10초</button>
+      <button class="btn-ghost" data-tadj="10">+10초</button>
+      <button class="btn-ghost" data-tadj="60">+1분</button>
+    </div>
+    <div class="hint">시작/정지/리셋 외에, <b>분·초를 입력하고 "시간 설정"</b>으로 시계를 원하는 값으로 맞출 수 있어요(진행 중에도 가능). ±버튼으로 미세조정. 골 알림 시간은 이 시계 기준, 전·후반 따로(후반 45분+).</div>
   </div>
 
   <!-- 경기 불러오기 -->
@@ -472,6 +483,19 @@
   $("#t-reset").addEventListener("click", () => post("/timer", { cmd: "reset" }));
   $("#half1").addEventListener("click", () => post("/timer", { cmd: "half", half: 1 }));
   $("#half2").addEventListener("click", () => post("/timer", { cmd: "half", half: 2 }));
+  // 직접 시간 설정
+  function liveSec() {
+    const t = state.timer || {}; let s = t.elapsedSec || 0;
+    if (t.running && t.startedAt) s += (Date.now() - t.startedAt) / 1000;
+    return s;
+  }
+  $("#t-set").addEventListener("click", () => {
+    const m = Number($("#set-min").value) || 0, s = Number($("#set-sec").value) || 0;
+    post("/timer", { cmd: "set", sec: m * 60 + s });
+  });
+  document.querySelectorAll("[data-tadj]").forEach((b) => b.addEventListener("click", () => {
+    post("/timer", { cmd: "set", sec: Math.max(0, Math.round(liveSec()) + Number(b.dataset.tadj)) });
+  }));
 
   // 타이머 로컬 표시
   function tickTimer() {
