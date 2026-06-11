@@ -42,6 +42,7 @@ const DEFAULT_STATE = {
     predict:    { x: 1560, y: 110, scale: 1 },
     goallog:    { x: 90, y: 620, scale: 1 },
     ticker:     { x: 90, y: 954, scale: 1 },
+    formation:  { x: 360, y: 200, scale: 1 },
   },
   scoreboard: {
     show: true,
@@ -102,6 +103,26 @@ const DEFAULT_STATE = {
     competition: "WC",       // football-data 대회 코드 (월드컵=WC)
     matchId: "",
     liveSync: false,
+    afKey: "",               // API-Football(api-sports.io) 키 — 포메이션/라인업용
+    afFixture: "",           // API-Football 경기(fixture) ID
+  },
+  formation: {
+    show: false,
+    homeFormation: "4-3-3",
+    awayFormation: "4-3-3",
+    // 선수 배열: [GK, 수비줄…, 미드줄…, 공격줄…] 순서 (포메이션 줄 합 + GK = 11)
+    homePlayers: [
+      { num: 1, name: "김승규" }, { num: 2, name: "김문환" }, { num: 4, name: "김민재" },
+      { num: 19, name: "김영권" }, { num: 14, name: "홍철" }, { num: 6, name: "황인범" },
+      { num: 16, name: "정우영" }, { num: 17, name: "이재성" }, { num: 7, name: "손흥민" },
+      { num: 9, name: "조규성" }, { num: 11, name: "황희찬" },
+    ],
+    awayPlayers: [
+      { num: 1, name: "" }, { num: 2, name: "" }, { num: 3, name: "" },
+      { num: 4, name: "" }, { num: 5, name: "" }, { num: 6, name: "" },
+      { num: 7, name: "" }, { num: 8, name: "" }, { num: 9, name: "" },
+      { num: 10, name: "" }, { num: 11, name: "" },
+    ],
   },
   sound: {                   // 득점 시 재생할 사운드(노래)
     enabled: true,
@@ -302,6 +323,28 @@ async function syncMatch() {
   saveState(state); broadcast();
 }
 
+// ── API-Football (포메이션/라인업) ───────────────────────────
+async function loadLineups() {
+  if (!state.api.afKey) throw new Error("API-Football 키가 없습니다 (컨트롤에서 입력).");
+  if (!state.api.afFixture) throw new Error("fixture ID가 없습니다.");
+  const r = await fetch(`https://v3.football.api-sports.io/fixtures/lineups?fixture=${encodeURIComponent(state.api.afFixture)}`, {
+    headers: { "x-apisports-key": state.api.afKey },
+  });
+  if (!r.ok) throw new Error(`API-Football ${r.status}`);
+  const data = await r.json();
+  const arr = data.response || [];
+  if (!arr.length) throw new Error("라인업 데이터가 없습니다 (경기 전이거나 미지원).");
+  const toPlayers = (xi) => (xi || []).map((p) => ({ num: p.player?.number ?? "", name: p.player?.name || "" }));
+  const home = arr[0], away = arr[1] || {};
+  if (home.formation) state.formation.homeFormation = home.formation;
+  if (home.startXI) state.formation.homePlayers = toPlayers(home.startXI);
+  if (away.formation) state.formation.awayFormation = away.formation;
+  if (away.startXI) state.formation.awayPlayers = toPlayers(away.startXI);
+  state.formation.show = true;
+  saveState(state); broadcast();
+  return { home: home.team?.name, away: away.team?.name, homeFormation: home.formation, awayFormation: away.formation };
+}
+
 // ── HTTP ─────────────────────────────────────────────────────
 const NOCACHE = { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache", Expires: "0" };
 function serveFile(res, file, type) {
@@ -421,6 +464,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (url === "/api/sync" && req.method === "POST") {
       try { await syncMatch(); return json(res, 200, { ok: true }); }
+      catch (e) { return json(res, 200, { ok: false, error: e.message }); }
+    }
+    // 포메이션/라인업 불러오기 (API-Football)
+    if (url === "/api/lineups" && req.method === "POST") {
+      const body = JSON.parse((await readBody(req)) || "{}");
+      if (body.afKey != null) state.api.afKey = body.afKey;
+      if (body.afFixture != null) state.api.afFixture = body.afFixture;
+      saveState(state);
+      try { const r = await loadLineups(); return json(res, 200, { ok: true, info: r }); }
       catch (e) { return json(res, 200, { ok: false, error: e.message }); }
     }
 

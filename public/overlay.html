@@ -98,6 +98,31 @@
   .gl-scorer{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .gl-empty{color:#cabac3;font-size:20px;text-align:center;padding:14px 0;}
 
+  /* ───────── 포메이션 보드 ───────── */
+  #formation{width:1200px;filter:drop-shadow(0 16px 40px rgba(0,0,0,.55));}
+  .fm-head{display:flex;justify-content:space-between;align-items:center;
+    background:linear-gradient(180deg,#6b1f3f,#4c1429);color:#fff;border-radius:10px 10px 0 0;padding:12px 26px;}
+  .fm-side{display:flex;align-items:center;gap:14px;font-size:30px;font-weight:900;}
+  .fm-side.away{flex-direction:row-reverse;}
+  .fm-form{font-size:26px;font-weight:900;color:#e9c87f;letter-spacing:2px;}
+  .fm-vs{font-size:22px;color:#e7cdd8;font-weight:800;}
+  .pitch{position:relative;width:100%;height:690px;border-radius:0 0 10px 10px;overflow:hidden;
+    background:repeating-linear-gradient(90deg,#1d7a39 0 100px,#1a6f34 100px 200px);
+    border:3px solid rgba(255,255,255,.55);border-top:none;}
+  .pitch .line{position:absolute;background:rgba(255,255,255,.55);}
+  .pitch .mid{left:50%;top:0;bottom:0;width:3px;transform:translateX(-50%);}
+  .pitch .circle{position:absolute;left:50%;top:50%;width:150px;height:150px;border:3px solid rgba(255,255,255,.55);
+    border-radius:50%;transform:translate(-50%,-50%);}
+  .pitch .box{position:absolute;top:50%;transform:translateY(-50%);width:120px;height:300px;border:3px solid rgba(255,255,255,.5);}
+  .pitch .box.l{left:0;border-left:none;} .pitch .box.r{right:0;border-right:none;}
+  .fm-player{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:5px;}
+  .fm-dot{width:58px;height:58px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:27px;font-weight:900;color:#fff;border:3px solid rgba(255,255,255,.9);box-shadow:0 3px 8px rgba(0,0,0,.45);}
+  .fm-player.home .fm-dot{background:linear-gradient(180deg,#3b74d6,#2552ab);}
+  .fm-player.away .fm-dot{background:linear-gradient(180deg,#d84545,#ab2727);}
+  .fm-nm{font-size:21px;font-weight:800;color:#fff;background:rgba(0,0,0,.55);padding:2px 9px;border-radius:5px;
+    white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;}
+
   /* ───────── 뉴스 티커 ───────── */
   #ticker{width:1750px;height:56px;display:flex;align-items:stretch;border-radius:6px;overflow:hidden;
     box-shadow:0 6px 16px rgba(0,0,0,.4);}
@@ -141,6 +166,19 @@
     <span class="tag"></span>
     <div class="gl-head">⚽ <span id="glg-title"></span></div>
     <div class="gl-body" id="glg-body"></div>
+  </div>
+
+  <div class="block el" id="formation" data-block="formation">
+    <span class="tag"></span>
+    <div class="fm-head">
+      <div class="fm-side home"><span id="fm-home-name"></span><span class="fm-form" id="fm-home-form"></span></div>
+      <span class="fm-vs">FORMATION</span>
+      <div class="fm-side away"><span id="fm-away-name"></span><span class="fm-form" id="fm-away-form"></span></div>
+    </div>
+    <div class="pitch" id="fm-pitch">
+      <div class="line mid"></div><div class="circle"></div>
+      <div class="box l"></div><div class="box r"></div>
+    </div>
   </div>
 
   <div class="block el" id="ticker" data-block="ticker">
@@ -191,6 +229,46 @@
   }
   const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
 
+  // ── 포메이션 보드 ──
+  function formationRows(formStr, players) {
+    const nums = String(formStr || "").split("-").map((n) => parseInt(n, 10)).filter((n) => n > 0);
+    const lines = [1, ...nums]; // GK + 각 줄
+    const rows = []; let idx = 0;
+    for (const cnt of lines) { rows.push(players.slice(idx, idx + cnt)); idx += cnt; }
+    if (idx < players.length && rows.length) rows[rows.length - 1] = rows[rows.length - 1].concat(players.slice(idx));
+    return rows;
+  }
+  function renderFormationTeam(players, formStr, side) {
+    const rows = formationRows(formStr, players || []);
+    const L = rows.length, span = [6, 47];
+    let html = "";
+    rows.forEach((line, ci) => {
+      let x;
+      const off = L > 1 ? (span[1] - span[0]) * ci / (L - 1) : 0;
+      x = side === "home" ? span[0] + off : (100 - span[0]) - off;
+      const n = line.length;
+      line.forEach((p, k) => {
+        const y = n > 1 ? (13 + (87 - 13) * k / (n - 1)) : 50;
+        html += `<div class="fm-player ${side}" style="left:${x}%;top:${y}%">
+          <div class="fm-dot">${p.num ?? ""}</div>${p.name ? `<div class="fm-nm">${esc(p.name)}</div>` : ""}</div>`;
+      });
+    });
+    return html;
+  }
+  function renderFormation(s) {
+    const f = s.formation; if (!f) return;
+    setText("fm-home-name", s.scoreboard.homeName);
+    setText("fm-away-name", s.scoreboard.awayName);
+    setText("fm-home-form", f.homeFormation);
+    setText("fm-away-form", f.awayFormation);
+    const pitch = $("fm-pitch");
+    // 선수 마커만 갈아끼움(라인/박스 정적 요소는 유지)
+    pitch.querySelectorAll(".fm-player").forEach((e) => e.remove());
+    pitch.insertAdjacentHTML("beforeend",
+      renderFormationTeam(f.homePlayers, f.homeFormation, "home") +
+      renderFormationTeam(f.awayPlayers, f.awayFormation, "away"));
+  }
+
   // 스코어 예측: 내 스코어보드(실제)와 비교 → 실제가 예측을 넘어서면 실패(회색), 현재 일치면 적중(금색)
   function renderPredict(s) {
     setText("pd-title", s.predict.title);
@@ -228,6 +306,8 @@
     setText("gl-headline", s.goal.headline); toggle("goal", s.goal.show);
     // 스코어 예측 (실제 점수와 비교)
     renderPredict(s); toggle("predict", s.predict.show);
+    // 포메이션
+    renderFormation(s); toggle("formation", s.formation && s.formation.show);
     // 득점기록
     renderGoalLog(s); toggle("goallog", s.goallog.show);
     // 티커

@@ -41,9 +41,10 @@
   .row{display:flex;gap:9px;margin-bottom:9px;}
   .field{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0;}
   .field label{font-size:11px;color:var(--muted);font-weight:600;}
-  .field input,.field select{background:#160f1d;border:1px solid var(--line);border-radius:8px;color:var(--txt);
+  .field input,.field select,.field textarea{background:#160f1d;border:1px solid var(--line);border-radius:8px;color:var(--txt);
     padding:9px 10px;font-size:14px;font-family:inherit;width:100%;}
-  .field input:focus,.field select:focus{outline:none;border-color:var(--maroon2);}
+  .field textarea{resize:vertical;line-height:1.6;}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--maroon2);}
   .field.w-flag{flex:0 0 70px;} .field.w-sm{flex:0 0 88px;}
   button{font-family:inherit;font-weight:800;font-size:13px;border:none;border-radius:9px;padding:10px 15px;cursor:pointer;}
   .btn-primary{background:var(--maroon2);color:#fff;} .btn-primary:hover{background:#a02f60;}
@@ -281,6 +282,33 @@
     <div class="hint">자동 모드: 구글뉴스에서 검색어 헤드라인을 5분마다 가져옵니다(네이버 기사 포함).</div>
   </div>
 
+  <!-- 포메이션 -->
+  <div class="card wide">
+    <h2>포메이션 <span class="tg">피치 보드 (자동+수동)</span>
+      <label class="sw"><input type="checkbox" data-bool="formation.show"><span class="track"></span></label>
+    </h2>
+    <datalist id="formlist"><option value="4-3-3"></option><option value="4-4-2"></option><option value="4-2-3-1"></option><option value="4-1-4-1"></option><option value="3-4-3"></option><option value="3-5-2"></option><option value="5-3-2"></option></datalist>
+    <div class="row">
+      <div class="field"><label>API-Football 키 (자동 불러오기)</label><input data-k="api.afKey" placeholder="api-sports.io 무료키"></div>
+      <div class="field w-sm"><label>fixture ID</label><input data-k="api.afFixture" placeholder="예: 1035037"></div>
+      <button class="btn-primary" id="load-lineups" style="align-self:flex-end">라인업 불러오기</button>
+    </div>
+    <div class="apiout" id="fm-out">무료키 발급: dashboard.api-football.com (하루 100회). fixture ID로 포메이션·선발 11명 자동 입력 → 아래에서 수정 가능.</div>
+    <div class="grid" style="margin-top:12px">
+      <div class="card" style="background:#170f1e">
+        <div style="font-weight:800;margin-bottom:8px;color:var(--home)">홈</div>
+        <div class="row"><div class="field w-sm"><label>포메이션</label><input list="formlist" data-k="formation.homeFormation"></div></div>
+        <div class="field"><label>선수 (한 줄에 "번호 이름" · GK부터 11명)</label><textarea data-players="home" rows="11" placeholder="1 김승규&#10;2 김문환&#10;..."></textarea></div>
+      </div>
+      <div class="card" style="background:#170f1e">
+        <div style="font-weight:800;margin-bottom:8px;color:var(--away)">원정</div>
+        <div class="row"><div class="field w-sm"><label>포메이션</label><input list="formlist" data-k="formation.awayFormation"></div></div>
+        <div class="field"><label>선수 (한 줄에 "번호 이름" · GK부터 11명)</label><textarea data-players="away" rows="11" placeholder="1 ...&#10;2 ..."></textarea></div>
+      </div>
+    </div>
+    <div class="hint">포메이션은 <b>줄 합 + GK = 11</b>이어야 정확히 배치됩니다(예: 4-3-3 → GK+4+3+3). 선수 순서: GK → 수비 → 미드 → 공격. 팀 이름은 스코어보드 값을 사용합니다.</div>
+  </div>
+
   <!-- 레이아웃 -->
   <div class="card wide">
     <h2>위치 / 크기 <span class="tg">각 요소 X·Y·배율</span>
@@ -313,7 +341,7 @@
     return r.json();
   }
 
-  const LAYOUT_KEYS = { scoreboard: "스코어보드", goal: "골 알림", predict: "스코어 예측", goallog: "득점기록", ticker: "뉴스티커" };
+  const LAYOUT_KEYS = { scoreboard: "스코어보드", goal: "골 알림", predict: "스코어 예측", goallog: "득점기록", formation: "포메이션", ticker: "뉴스티커" };
 
   function buildLayoutPanel() {
     const g = $("#layout-grid");
@@ -363,6 +391,20 @@
     if (!$("#predict-list").contains(document.activeElement)) renderPredictList(s);
     // 볼륨 표시
     const volEl = $("#volval"); if (volEl) volEl.textContent = Math.round((Number(s.sound?.volume) ?? 0.8) * 100) + "%";
+    // 포메이션 선수 텍스트영역 (편집 중이면 건드리지 않음)
+    document.querySelectorAll("[data-players]").forEach((ta) => {
+      if (document.activeElement === ta) return;
+      const arr = (s.formation && (ta.dataset.players === "home" ? s.formation.homePlayers : s.formation.awayPlayers)) || [];
+      ta.value = arr.map((p) => `${p.num ?? ""} ${p.name || ""}`.trim()).join("\n");
+    });
+  }
+
+  function parsePlayers(text) {
+    return String(text).split(/\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+      const m = l.match(/^(\d+)\s+(.*)$/); if (m) return { num: Number(m[1]), name: m[2].trim() };
+      if (/^\d+$/.test(l)) return { num: Number(l), name: "" };
+      return { num: "", name: l };
+    });
   }
 
   // ── 스코어 예측 (6인) ──
@@ -585,6 +627,19 @@
   $("#sync-match").addEventListener("click", async () => {
     const out = $("#api-out"); const j = await post("/api/sync");
     out.textContent = j.ok ? "동기화 완료." : "오류: " + j.error; out.className = j.ok ? "apiout" : "apiout err";
+  });
+
+  // 포메이션: 선수 텍스트영역 → 상태
+  document.querySelectorAll("[data-players]").forEach((ta) => ta.addEventListener("change", () => {
+    const key = ta.dataset.players === "home" ? "homePlayers" : "awayPlayers";
+    update({ formation: { [key]: parsePlayers(ta.value) } });
+  }));
+  // 포메이션: API-Football 라인업 불러오기
+  $("#load-lineups").addEventListener("click", async () => {
+    const out = $("#fm-out"); out.className = "apiout"; out.textContent = "불러오는 중…";
+    const j = await post("/api/lineups", { afKey: getPath(state, "api.afKey"), afFixture: getPath(state, "api.afFixture") });
+    if (j.ok) { out.textContent = `불러옴: ${j.info?.home || ""} ${j.info?.homeFormation || ""} vs ${j.info?.away || ""} ${j.info?.awayFormation || ""}`; }
+    else { out.className = "apiout err"; out.textContent = "오류: " + j.error; }
   });
 
   // 초기화
