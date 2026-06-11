@@ -22,9 +22,9 @@ const DEFAULT_STATE = {
   layout: {
     scoreboard: { x: 90, y: 60, scale: 1 },
     goal:       { x: 590, y: 355, scale: 1 },
-    crew:       { x: 90, y: 850, scale: 1 },
+    predict:    { x: 1560, y: 110, scale: 1 },
+    goallog:    { x: 90, y: 620, scale: 1 },
     ticker:     { x: 90, y: 954, scale: 1 },
-    goallog:    { x: 1480, y: 320, scale: 1 },
   },
   scoreboard: {
     show: true,
@@ -51,10 +51,17 @@ const DEFAULT_STATE = {
     title: "득점 기록",
     items: [],               // {team:'home'|'away', teamName, minute, scorer}
   },
-  crew: {
+  predict: {
     show: true,
-    caster: "배성재", casterRole: "캐스터",
-    analyst: "박지성", analystRole: "해설위원",
+    title: "스코어 예측",
+    items: [
+      { name: "참가자 1", home: 2, away: 1 },
+      { name: "참가자 2", home: 1, away: 0 },
+      { name: "참가자 3", home: 2, away: 0 },
+      { name: "참가자 4", home: 0, away: 0 },
+      { name: "참가자 5", home: 3, away: 1 },
+      { name: "참가자 6", home: 1, away: 1 },
+    ],
   },
   ticker: {
     show: true,

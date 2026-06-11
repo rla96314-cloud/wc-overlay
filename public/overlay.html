@@ -66,14 +66,21 @@
     display:flex;flex-direction:column;justify-content:center;padding-left:46px;}
   .goal-headline{color:var(--text-dark);font-size:52px;font-weight:900;letter-spacing:.5px;}
 
-  /* ───────── 중계진 ───────── */
-  #crew{width:380px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.4));}
-  .crew-row{display:flex;align-items:center;background:linear-gradient(180deg,#6b1f3f,#4c1429);height:58px;padding:0 22px;}
-  .crew-row.top{border-radius:7px 7px 0 0;}
-  .crew-row.bot{border-radius:0 0 7px 7px;border-top:1px solid rgba(255,255,255,.12);}
-  .crew-icon{width:34px;font-size:26px;color:#e9c87f;text-align:center;margin-right:8px;}
-  .crew-name{color:#fff;font-size:30px;font-weight:900;}
-  .crew-role{color:#e7cdd8;font-size:23px;font-weight:600;margin-left:12px;}
+  /* ───────── 스코어 예측 (6인) ───────── */
+  #predict{width:300px;border-radius:11px;overflow:hidden;filter:drop-shadow(0 8px 20px rgba(0,0,0,.45));}
+  .pd-head{background:linear-gradient(180deg,#6b1f3f,#561730);color:#fff;text-align:center;font-size:26px;
+    font-weight:900;padding:12px 0;letter-spacing:1px;}
+  .pd-body{background:linear-gradient(180deg,rgba(40,12,24,.94),rgba(28,8,18,.94));padding:7px;
+    display:flex;flex-direction:column;gap:7px;}
+  .pd-item{display:flex;flex-direction:column;align-items:center;gap:1px;padding:9px 8px;border-radius:8px;
+    background:linear-gradient(180deg,#5f1a37,#4c1429);transition:background .35s,opacity .35s,box-shadow .35s;}
+  .pd-item.fail{background:linear-gradient(180deg,#34333b,#26262c);opacity:.5;}      /* 예측 실패 → 회색 */
+  .pd-item.hit{background:linear-gradient(180deg,#caa15a,#9c7a32);box-shadow:0 0 0 2px #ffd76a inset;} /* 현재 적중 */
+  .pd-name{color:#fff;font-size:25px;font-weight:800;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;max-width:100%;line-height:1.2;}
+  .pd-score{font-size:33px;font-weight:900;color:#fff;letter-spacing:2px;font-variant-numeric:tabular-nums;}
+  .pd-item.fail .pd-name,.pd-item.fail .pd-score{color:#bcb9c2;}
+  .pd-item.hit .pd-name,.pd-item.hit .pd-score{color:#3a2600;}
 
   /* ───────── 득점 기록 창 ───────── */
   #goallog{width:340px;border-radius:10px;overflow:hidden;filter:drop-shadow(0 8px 20px rgba(0,0,0,.45));}
@@ -121,10 +128,10 @@
     </div>
   </div>
 
-  <div class="block el" id="crew" data-block="crew">
+  <div class="block el" id="predict" data-block="predict">
     <span class="tag"></span>
-    <div class="crew-row top"><span class="crew-icon">🎙</span><span class="crew-name" id="cr-caster"></span><span class="crew-role" id="cr-caster-role"></span></div>
-    <div class="crew-row bot"><span class="crew-icon"></span><span class="crew-name" id="cr-analyst"></span><span class="crew-role" id="cr-analyst-role"></span></div>
+    <div class="pd-head" id="pd-title"></div>
+    <div class="pd-body" id="pd-body"></div>
   </div>
 
   <div class="block el" id="goallog" data-block="goallog">
@@ -178,6 +185,19 @@
   }
   const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
 
+  // 스코어 예측: 내 스코어보드(실제)와 비교 → 실제가 예측을 넘어서면 실패(회색), 현재 일치면 적중(금색)
+  function renderPredict(s) {
+    setText("pd-title", s.predict.title);
+    const ah = Number(s.scoreboard.homeScore) || 0, aa = Number(s.scoreboard.awayScore) || 0;
+    $("pd-body").innerHTML = (s.predict.items || []).map((p) => {
+      const ph = Number(p.home) || 0, pa = Number(p.away) || 0;
+      const fail = ah > ph || aa > pa;          // 더 이상 맞출 수 없음 → 회색
+      const hit = !fail && ah === ph && aa === pa; // 지금 정확히 일치
+      const cls = fail ? "fail" : (hit ? "hit" : "");
+      return `<div class="pd-item ${cls}"><div class="pd-name">${esc(p.name || "")}</div><div class="pd-score">${ph} : ${pa}</div></div>`;
+    }).join("");
+  }
+
   // 팀 이름: 칸 너비에 맞춰 글자크기 자동 축소
   function fitName(id, max = 34, min = 14) {
     const el = $(id); if (!el) return;
@@ -200,10 +220,8 @@
     // 골
     $("gl-min").innerHTML = String(s.goal.minute || "").replace(/'/g, "<span class='ap'>'</span>");
     setText("gl-headline", s.goal.headline); toggle("goal", s.goal.show);
-    // 중계진
-    setText("cr-caster", s.crew.caster); setText("cr-caster-role", s.crew.casterRole);
-    setText("cr-analyst", s.crew.analyst); setText("cr-analyst-role", s.crew.analystRole);
-    toggle("crew", s.crew.show);
+    // 스코어 예측 (실제 점수와 비교)
+    renderPredict(s); toggle("predict", s.predict.show);
     // 득점기록
     renderGoalLog(s); toggle("goallog", s.goallog.show);
     // 티커

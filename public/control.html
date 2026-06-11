@@ -195,19 +195,14 @@
     <div class="hint">＋ 득점 시 자동 추가됩니다. 여기서 시간/득점자 수정·삭제 가능.</div>
   </div>
 
-  <!-- 중계진 -->
+  <!-- 스코어 예측 (6인) -->
   <div class="card">
-    <h2>중계진 <span class="tg">좌하단</span>
-      <label class="sw"><input type="checkbox" data-bool="crew.show"><span class="track"></span></label>
+    <h2>스코어 예측 <span class="tg">우측 · 6인</span>
+      <label class="sw"><input type="checkbox" data-bool="predict.show"><span class="track"></span></label>
     </h2>
-    <div class="row">
-      <div class="field"><label>캐스터</label><input data-k="crew.caster"></div>
-      <div class="field w-sm"><label>직함</label><input data-k="crew.casterRole"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label>해설</label><input data-k="crew.analyst"></div>
-      <div class="field w-sm"><label>직함</label><input data-k="crew.analystRole"></div>
-    </div>
+    <div class="row"><div class="field"><label>제목</label><input data-k="predict.title"></div></div>
+    <div id="predict-list"></div>
+    <div class="hint">이름 / 홈:원정 예측을 입력. 내가 매기는 실제 점수가 예측을 <b>넘어서면 자동 회색</b> 처리되고, 현재 정확히 일치하면 금색으로 강조됩니다.</div>
   </div>
 
   <!-- 뉴스 티커 -->
@@ -257,7 +252,7 @@
     return r.json();
   }
 
-  const LAYOUT_KEYS = { scoreboard: "스코어보드", goal: "골 알림", crew: "중계진", goallog: "득점기록", ticker: "뉴스티커" };
+  const LAYOUT_KEYS = { scoreboard: "스코어보드", goal: "골 알림", predict: "스코어 예측", goallog: "득점기록", ticker: "뉴스티커" };
 
   function buildLayoutPanel() {
     const g = $("#layout-grid");
@@ -302,6 +297,33 @@
     if (!$("#log-list").contains(document.activeElement)) renderLog(s);
     // OSC 대상 목록 (편집 중이면 건드리지 않음)
     if (!$("#osc-list").contains(document.activeElement)) renderOscTargets(s);
+    // 스코어 예측 목록
+    if (!$("#predict-list").contains(document.activeElement)) renderPredictList(s);
+  }
+
+  // ── 스코어 예측 (6인) ──
+  function renderPredictList(s) {
+    const box = $("#predict-list");
+    const items = (s.predict && s.predict.items) || [];
+    const q = (v) => String(v ?? "").replace(/"/g, "&quot;");
+    box.innerHTML = items.map((p, i) => `
+      <div class="logrow">
+        <input class="sc field" data-pred="${i}.name" value="${q(p.name)}" placeholder="이름">
+        <input class="min field" type="number" data-pred="${i}.home" value="${q(p.home ?? 0)}">
+        <span style="color:var(--muted);font-weight:900">:</span>
+        <input class="min field" type="number" data-pred="${i}.away" value="${q(p.away ?? 0)}">
+      </div>`).join("");
+    box.querySelectorAll("[data-pred]").forEach((inp) => inp.addEventListener("change", commitPredict));
+  }
+  function commitPredict() {
+    const map = {};
+    $("#predict-list").querySelectorAll("[data-pred]").forEach((inp) => {
+      const [i, prop] = inp.dataset.pred.split(".");
+      map[i] = map[i] || {};
+      map[i][prop] = inp.type === "number" ? (Number(inp.value) || 0) : inp.value;
+    });
+    const items = Object.keys(map).sort((a, b) => a - b).map((k) => map[k]);
+    update({ predict: { items } });
   }
 
   // ── OSC 다중 대상 ──
