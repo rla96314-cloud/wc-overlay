@@ -5,217 +5,130 @@
 <meta name="viewport" content="width=1920, height=1080" />
 <title>WC Overlay</title>
 <style>
-  /* ── vMix 브라우저 소스: 1920x1080, 투명 배경 ── */
   :root{
-    --maroon:#6b1f3f;        /* 카타르 월드컵 메인 마룬 */
-    --maroon-dark:#561730;
-    --maroon-deep:#3f0f22;
-    --gold:#caa15a;
-    --panel:#f1eef0;         /* 골박스 흰 패널 */
-    --panel-edge:#d8d2d6;
-    --text-dark:#5a1730;
+    --maroon:#6b1f3f;--maroon-dark:#561730;--gold:#caa15a;--text-dark:#5a1730;
   }
   *{margin:0;padding:0;box-sizing:border-box;}
-  html,body{
-    width:1920px;height:1080px;overflow:hidden;
-    background:transparent;
+  html,body{width:1920px;height:1080px;overflow:hidden;background:transparent;
     font-family:"Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
-    -webkit-font-smoothing:antialiased;
-  }
+    -webkit-font-smoothing:antialiased;}
   #stage{position:relative;width:1920px;height:1080px;}
 
-  .hidden{opacity:0 !important;transform:translateY(-12px);pointer-events:none;}
-  .el{transition:opacity .35s ease, transform .35s ease;}
+  /* 위치/크기 편집 단위 블록 */
+  .block{position:absolute;transform-origin:top left;}
+  .el{transition:opacity .35s ease;}
+  .hidden{opacity:0 !important;pointer-events:none;}
 
-  .flag{
-    display:inline-flex;align-items:center;justify-content:center;
-    line-height:1;border-radius:3px;overflow:hidden;
-    background:#fff;
-  }
+  /* 편집모드 표시 */
+  body.edit .block{outline:2px dashed rgba(255,255,255,.45);cursor:move;}
+  body.edit .block:hover{outline:2px dashed #ffd76a;}
+  .tag{position:absolute;left:0;top:-22px;font-size:13px;color:#ffd76a;background:rgba(0,0,0,.7);
+    padding:1px 7px;border-radius:4px;white-space:nowrap;display:none;font-family:monospace;}
+  body.edit .tag{display:block;}
 
-  /* ───────── 스코어보드 (좌상단) ───────── */
-  #scoreboard{position:absolute;left:90px;top:60px;width:700px;
-    filter:drop-shadow(0 8px 22px rgba(0,0,0,.45));}
-  .sb-title{
-    background:linear-gradient(180deg,#7a2547,#5d1834);
-    color:#f3e7ec;font-size:25px;font-weight:800;letter-spacing:.5px;
-    text-align:center;padding:11px 0 10px;border-radius:6px 6px 0 0;
-    display:flex;align-items:center;justify-content:center;gap:26px;
-  }
+  .flag{display:inline-flex;align-items:center;justify-content:center;line-height:1;
+    border-radius:3px;overflow:hidden;background:#fff;flex:none;}
+  .flag img{width:100%;height:100%;object-fit:cover;display:block;}
+
+  /* ───────── 스코어보드 ───────── */
+  #scoreboard{width:700px;filter:drop-shadow(0 8px 22px rgba(0,0,0,.45));}
+  .sb-title{background:linear-gradient(180deg,#7a2547,#5d1834);color:#f3e7ec;font-size:25px;
+    font-weight:800;letter-spacing:.5px;text-align:center;padding:11px 0 10px;border-radius:6px 6px 0 0;
+    display:flex;align-items:center;justify-content:center;gap:26px;}
   .sb-title .round{color:#e9c87f;font-weight:800;}
   .sb-body{display:flex;align-items:stretch;height:78px;}
   .sb-team{flex:1;display:flex;align-items:center;background:linear-gradient(180deg,#5f1a37,#4c1429);}
-  .sb-team.home{border-radius:0 0 0 6px;}
-  .sb-team.away{flex-direction:row-reverse;border-radius:0 0 6px 0;}
-  .sb-team .flag{width:64px;height:46px;font-size:38px;margin:0 14px;flex:none;
-    box-shadow:0 0 0 2px rgba(255,255,255,.85);}
-  .sb-team .name{color:#fff;font-size:34px;font-weight:800;letter-spacing:.5px;
-    white-space:nowrap;}
+  .sb-team.away{flex-direction:row-reverse;}
+  .sb-team .flag{width:64px;height:46px;font-size:38px;margin:0 14px;box-shadow:0 0 0 2px rgba(255,255,255,.85);}
+  .sb-team .name{color:#fff;font-size:34px;font-weight:800;letter-spacing:.5px;white-space:nowrap;}
   .sb-team.away .name{margin-right:auto;padding-right:6px;}
   .sb-team.home .name{margin-left:auto;padding-left:6px;}
-  .sb-score{
-    flex:none;width:200px;display:flex;align-items:center;justify-content:center;gap:18px;
-    background:linear-gradient(180deg,#360c1d,#280714);color:#fff;
-    font-size:52px;font-weight:900;
-  }
-  .sb-score .diamond{
-    width:26px;height:26px;background:linear-gradient(135deg,#caa15a,#8a6c2f);
-    transform:rotate(45deg);box-shadow:0 0 8px rgba(202,161,90,.6);
-  }
-  .sb-clock{
-    margin:0 auto;width:240px;background:linear-gradient(180deg,#4c1429,#360c1d);
-    color:#fff;font-size:30px;font-weight:800;letter-spacing:2px;text-align:center;
-    padding:7px 0 8px;border-radius:0 0 7px 7px;
-    box-shadow:0 6px 14px rgba(0,0,0,.4);
-  }
+  .sb-score{flex:none;width:200px;display:flex;align-items:center;justify-content:center;gap:18px;
+    background:linear-gradient(180deg,#360c1d,#280714);color:#fff;font-size:52px;font-weight:900;}
+  .sb-score .diamond{width:26px;height:26px;background:linear-gradient(135deg,#caa15a,#8a6c2f);
+    transform:rotate(45deg);box-shadow:0 0 8px rgba(202,161,90,.6);}
+  .sb-clock{margin:0 auto;width:260px;background:linear-gradient(180deg,#4c1429,#360c1d);color:#fff;
+    font-size:30px;font-weight:800;letter-spacing:2px;text-align:center;padding:7px 0 8px;
+    border-radius:0 0 7px 7px;box-shadow:0 6px 14px rgba(0,0,0,.4);}
 
-  /* ───────── 우상단 배너 ───────── */
-  #banner{position:absolute;right:80px;top:60px;width:330px;
-    background:linear-gradient(180deg,#6b1f3f,#4c1429);
-    border-radius:8px;padding:18px 22px;color:#fff;
-    box-shadow:0 8px 22px rgba(0,0,0,.45);}
-  #banner .b1{font-size:34px;font-weight:900;letter-spacing:.5px;}
-  #banner .b2{display:flex;align-items:center;gap:12px;margin-top:8px;
-    font-size:33px;font-weight:900;}
-  #banner .b2 .flag{width:52px;height:36px;font-size:30px;
-    box-shadow:0 0 0 2px rgba(255,255,255,.85);}
-
-  /* ───────── 중앙 골 알림 ───────── */
-  #goal{position:absolute;left:50%;top:355px;transform:translateX(-50%);
-    display:flex;align-items:stretch;width:740px;height:175px;
-    filter:drop-shadow(0 14px 30px rgba(0,0,0,.5));}
-  #goal.hidden{transform:translateX(-50%) translateY(-12px);}
-  .goal-left{flex:none;width:215px;background:var(--maroon);
-    display:flex;align-items:center;justify-content:center;gap:18px;
-    border-radius:6px 0 0 6px;color:#fff;}
+  /* ───────── 골 알림 ───────── */
+  #goal{display:flex;align-items:stretch;width:740px;height:175px;filter:drop-shadow(0 14px 30px rgba(0,0,0,.5));}
+  .goal-left{flex:none;width:215px;background:var(--maroon);display:flex;align-items:center;justify-content:center;
+    gap:18px;border-radius:6px 0 0 6px;color:#fff;}
   .goal-ball{font-size:62px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));}
   .goal-min{font-size:54px;font-weight:900;}
   .goal-min .ap{font-size:32px;vertical-align:super;}
-  .goal-right{flex:1;background:linear-gradient(180deg,#fbfafb,#e9e4e7);
-    border-radius:0 6px 6px 0;display:flex;flex-direction:column;justify-content:center;
-    padding-left:46px;position:relative;overflow:hidden;}
-  .goal-right::after{ /* 우측 사선 컷 느낌 */
-    content:"";position:absolute;right:-40px;bottom:-40px;width:140px;height:140px;
-    background:var(--maroon);transform:rotate(45deg);opacity:.0;
-  }
-  .goal-headline{color:var(--text-dark);font-size:48px;font-weight:900;letter-spacing:.5px;}
-  .goal-player{color:#2a2a2a;font-size:42px;font-weight:800;margin-top:6px;}
+  .goal-right{flex:1;background:linear-gradient(180deg,#fbfafb,#e9e4e7);border-radius:0 6px 6px 0;
+    display:flex;flex-direction:column;justify-content:center;padding-left:46px;}
+  .goal-headline{color:var(--text-dark);font-size:52px;font-weight:900;letter-spacing:.5px;}
 
-  /* ───────── 좌하단 중계진 ───────── */
-  #crew{position:absolute;left:90px;bottom:165px;width:380px;
-    filter:drop-shadow(0 6px 16px rgba(0,0,0,.4));}
-  .crew-row{display:flex;align-items:center;background:linear-gradient(180deg,#6b1f3f,#4c1429);
-    height:58px;padding:0 22px;}
+  /* ───────── 중계진 ───────── */
+  #crew{width:380px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.4));}
+  .crew-row{display:flex;align-items:center;background:linear-gradient(180deg,#6b1f3f,#4c1429);height:58px;padding:0 22px;}
   .crew-row.top{border-radius:7px 7px 0 0;}
   .crew-row.bot{border-radius:0 0 7px 7px;border-top:1px solid rgba(255,255,255,.12);}
   .crew-icon{width:34px;font-size:26px;color:#e9c87f;text-align:center;margin-right:8px;}
   .crew-name{color:#fff;font-size:30px;font-weight:900;}
   .crew-role{color:#e7cdd8;font-size:23px;font-weight:600;margin-left:12px;}
 
-  /* ───────── 우하단 다음경기 ───────── */
-  #next{position:absolute;right:80px;bottom:150px;width:380px;
-    border-radius:8px;overflow:hidden;
-    box-shadow:0 8px 22px rgba(0,0,0,.45);}
-  .next-head{background:linear-gradient(180deg,#6b1f3f,#561730);
-    color:#fff;text-align:center;font-size:30px;font-weight:900;padding:12px 0;}
-  .next-body{background:linear-gradient(180deg,#fbfafb,#ece7ea);padding:18px 0 20px;}
-  .next-date{text-align:center;color:var(--text-dark);font-size:30px;font-weight:900;
-    margin-bottom:14px;}
-  .next-teams{display:flex;align-items:center;justify-content:center;gap:22px;}
-  .next-team{display:flex;align-items:center;gap:12px;color:#222;font-size:30px;font-weight:900;}
-  .next-team.away{flex-direction:row-reverse;}
-  .next-team .flag{width:48px;height:34px;font-size:28px;box-shadow:0 0 0 1px #ccc;}
-  .next-vs{color:#9a6;font-size:24px;font-weight:900;color:#777;}
+  /* ───────── 득점 기록 창 ───────── */
+  #goallog{width:340px;border-radius:10px;overflow:hidden;filter:drop-shadow(0 8px 20px rgba(0,0,0,.45));}
+  .gl-head{background:linear-gradient(180deg,#6b1f3f,#561730);color:#fff;text-align:center;font-size:25px;
+    font-weight:900;padding:11px 0;display:flex;align-items:center;justify-content:center;gap:10px;}
+  .gl-body{background:linear-gradient(180deg,rgba(40,12,24,.92),rgba(28,8,18,.92));padding:8px 0;}
+  .gl-item{display:flex;align-items:center;gap:12px;padding:9px 18px;color:#fff;font-size:24px;}
+  .gl-item + .gl-item{border-top:1px solid rgba(255,255,255,.08);}
+  .gl-min{color:#e9c87f;font-weight:900;min-width:54px;}
+  .gl-dot{width:14px;height:10px;border-radius:2px;flex:none;}
+  .gl-dot.home{background:#3f7dd6;} .gl-dot.away{background:#d65a5a;}
+  .gl-scorer{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .gl-empty{color:#cabac3;font-size:20px;text-align:center;padding:14px 0;}
 
-  /* ───────── 하단 뉴스 티커 ───────── */
-  #ticker{position:absolute;left:90px;right:80px;bottom:70px;height:56px;
-    display:flex;align-items:stretch;border-radius:6px;overflow:hidden;
+  /* ───────── 뉴스 티커 ───────── */
+  #ticker{width:1750px;height:56px;display:flex;align-items:stretch;border-radius:6px;overflow:hidden;
     box-shadow:0 6px 16px rgba(0,0,0,.4);}
-  .ticker-label{flex:none;background:linear-gradient(180deg,#8a2750,#641a39);
-    color:#fff;font-size:27px;font-weight:900;display:flex;align-items:center;
-    padding:0 26px;letter-spacing:1px;}
-  .ticker-track{flex:1;background:linear-gradient(180deg,#5d1834,#420f24);
-    overflow:hidden;position:relative;}
-  .ticker-text{position:absolute;top:50%;transform:translateY(-50%);white-space:nowrap;
-    color:#fff;font-size:28px;font-weight:700;left:100%;
-    animation:scroll-left 18s linear infinite;}
-  @keyframes scroll-left{
-    from{transform:translate(0,-50%);}
-    to{transform:translate(calc(-100% - 1200px),-50%);}
-  }
+  .ticker-label{flex:none;background:linear-gradient(180deg,#8a2750,#641a39);color:#fff;font-size:27px;
+    font-weight:900;display:flex;align-items:center;padding:0 26px;letter-spacing:1px;}
+  .ticker-track{flex:1;background:linear-gradient(180deg,#5d1834,#420f24);overflow:hidden;position:relative;}
+  .ticker-text{position:absolute;top:50%;white-space:nowrap;color:#fff;font-size:28px;font-weight:700;
+    left:100%;transform:translateY(-50%);animation:scroll-left 40s linear infinite;}
+  @keyframes scroll-left{from{transform:translate(0,-50%);}to{transform:translate(calc(-100% - 1750px),-50%);}}
 </style>
 </head>
 <body>
 <div id="stage">
 
-  <!-- 스코어보드 -->
-  <div id="scoreboard" class="el">
+  <div class="block el" id="scoreboard" data-block="scoreboard">
+    <span class="tag"></span>
     <div class="sb-title"><span id="sb-meta"></span><span class="round" id="sb-round"></span></div>
     <div class="sb-body">
-      <div class="sb-team home">
-        <span class="flag" id="sb-home-flag"></span>
-        <span class="name" id="sb-home-name"></span>
-      </div>
-      <div class="sb-score">
-        <span id="sb-home-score"></span>
-        <span class="diamond"></span>
-        <span id="sb-away-score"></span>
-      </div>
-      <div class="sb-team away">
-        <span class="flag" id="sb-away-flag"></span>
-        <span class="name" id="sb-away-name"></span>
-      </div>
+      <div class="sb-team home"><span class="flag" id="sb-home-flag"></span><span class="name" id="sb-home-name"></span></div>
+      <div class="sb-score"><span id="sb-home-score"></span><span class="diamond"></span><span id="sb-away-score"></span></div>
+      <div class="sb-team away"><span class="flag" id="sb-away-flag"></span><span class="name" id="sb-away-name"></span></div>
     </div>
     <div class="sb-clock" id="sb-clock"></div>
   </div>
 
-  <!-- 우상단 배너 -->
-  <div id="banner" class="el">
-    <div class="b1" id="bn-line1"></div>
-    <div class="b2"><span id="bn-line2"></span><span class="flag" id="bn-flag"></span></div>
+  <div class="block el" id="goal" data-block="goal">
+    <span class="tag"></span>
+    <div class="goal-left"><span class="goal-ball">⚽</span><span class="goal-min" id="gl-min"></span></div>
+    <div class="goal-right"><div class="goal-headline" id="gl-headline"></div></div>
   </div>
 
-  <!-- 중앙 골 알림 -->
-  <div id="goal" class="el">
-    <div class="goal-left">
-      <span class="goal-ball">⚽</span>
-      <span class="goal-min" id="gl-min"></span>
-    </div>
-    <div class="goal-right">
-      <div class="goal-headline" id="gl-headline"></div>
-      <div class="goal-player" id="gl-player"></div>
-    </div>
+  <div class="block el" id="crew" data-block="crew">
+    <span class="tag"></span>
+    <div class="crew-row top"><span class="crew-icon">🎙</span><span class="crew-name" id="cr-caster"></span><span class="crew-role" id="cr-caster-role"></span></div>
+    <div class="crew-row bot"><span class="crew-icon"></span><span class="crew-name" id="cr-analyst"></span><span class="crew-role" id="cr-analyst-role"></span></div>
   </div>
 
-  <!-- 좌하단 중계진 -->
-  <div id="crew" class="el">
-    <div class="crew-row top">
-      <span class="crew-icon">🎙</span>
-      <span class="crew-name" id="cr-caster"></span>
-      <span class="crew-role" id="cr-caster-role"></span>
-    </div>
-    <div class="crew-row bot">
-      <span class="crew-icon"></span>
-      <span class="crew-name" id="cr-analyst"></span>
-      <span class="crew-role" id="cr-analyst-role"></span>
-    </div>
+  <div class="block el" id="goallog" data-block="goallog">
+    <span class="tag"></span>
+    <div class="gl-head">⚽ <span id="glg-title"></span></div>
+    <div class="gl-body" id="glg-body"></div>
   </div>
 
-  <!-- 우하단 다음경기 -->
-  <div id="next" class="el">
-    <div class="next-head" id="nx-label"></div>
-    <div class="next-body">
-      <div class="next-date" id="nx-date"></div>
-      <div class="next-teams">
-        <div class="next-team home"><span class="name" id="nx-home-name"></span><span class="flag" id="nx-home-flag"></span></div>
-        <div class="next-vs">VS</div>
-        <div class="next-team away"><span class="name" id="nx-away-name"></span><span class="flag" id="nx-away-flag"></span></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 하단 뉴스 티커 -->
-  <div id="ticker" class="el">
+  <div class="block el" id="ticker" data-block="ticker">
+    <span class="tag"></span>
     <div class="ticker-label" id="tk-label"></div>
     <div class="ticker-track"><div class="ticker-text" id="tk-text"></div></div>
   </div>
@@ -226,59 +139,116 @@
   const $ = (id) => document.getElementById(id);
   const setText = (id, v) => { const e = $(id); if (e) e.textContent = v ?? ""; };
   const toggle = (id, show) => { const e = $(id); if (e) e.classList.toggle("hidden", !show); };
+  const flag = (id, v) => { const e = $(id); if (!e) return;
+    if (/^https?:/.test(v || "")) e.innerHTML = `<img src="${v}">`; else e.textContent = v ?? ""; };
+
+  const params = new URLSearchParams(location.search);
+  let editMode = params.has("edit");
+  let S = null;
+
+  function placeBlocks(s) {
+    for (const key of Object.keys(s.layout || {})) {
+      const el = document.querySelector(`[data-block="${key}"]`);
+      if (!el) continue;
+      const L = s.layout[key];
+      el.style.left = L.x + "px";
+      el.style.top = L.y + "px";
+      el.style.transform = `scale(${L.scale || 1})`;
+      const tag = el.querySelector(".tag");
+      if (tag) tag.textContent = `${key}  x:${Math.round(L.x)} y:${Math.round(L.y)} ×${(L.scale||1).toFixed(2)}`;
+    }
+  }
+
+  function renderGoalLog(s) {
+    const body = $("glg-body");
+    setText("glg-title", s.goallog.title);
+    if (!s.goallog.items.length) { body.innerHTML = `<div class="gl-empty">아직 득점이 없습니다</div>`; return; }
+    body.innerHTML = s.goallog.items.map((g) => `
+      <div class="gl-item">
+        <span class="gl-min">${(g.minute||"").replace(/'/,"")}'</span>
+        <span class="gl-dot ${g.team}"></span>
+        <span class="gl-scorer">${g.scorer ? esc(g.scorer) : esc(g.teamName)}</span>
+      </div>`).join("");
+  }
+  const esc = (t) => String(t).replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
 
   function render(s) {
+    S = s;
     // 스코어보드
-    setText("sb-meta", `${s.scoreboard.title}`);
-    setText("sb-round", s.scoreboard.round);
-    setText("sb-home-flag", s.scoreboard.homeFlag);
-    setText("sb-home-name", s.scoreboard.homeName);
-    setText("sb-home-score", s.scoreboard.homeScore);
-    setText("sb-away-score", s.scoreboard.awayScore);
-    setText("sb-away-flag", s.scoreboard.awayFlag);
-    setText("sb-away-name", s.scoreboard.awayName);
-    setText("sb-clock", s.scoreboard.clock);
+    setText("sb-meta", s.scoreboard.title); setText("sb-round", s.scoreboard.round);
+    flag("sb-home-flag", s.scoreboard.homeFlag); setText("sb-home-name", s.scoreboard.homeName);
+    setText("sb-home-score", s.scoreboard.homeScore); setText("sb-away-score", s.scoreboard.awayScore);
+    flag("sb-away-flag", s.scoreboard.awayFlag); setText("sb-away-name", s.scoreboard.awayName);
     toggle("scoreboard", s.scoreboard.show);
-
-    // 배너
-    setText("bn-line1", s.banner.line1);
-    setText("bn-line2", s.banner.line2);
-    setText("bn-flag", s.banner.flag);
-    toggle("banner", s.banner.show);
-
-    // 골 (분에 ' 가 들어오면 위첨자로)
-    const m = String(s.goal.minute || "");
-    $("gl-min").innerHTML = m.replace(/'/g, "<span class='ap'>'</span>");
-    setText("gl-headline", s.goal.headline);
-    setText("gl-player", s.goal.player);
-    toggle("goal", s.goal.show);
-
+    // 골
+    $("gl-min").innerHTML = String(s.goal.minute || "").replace(/'/g, "<span class='ap'>'</span>");
+    setText("gl-headline", s.goal.headline); toggle("goal", s.goal.show);
     // 중계진
-    setText("cr-caster", s.crew.caster);
-    setText("cr-caster-role", s.crew.casterRole);
-    setText("cr-analyst", s.crew.analyst);
-    setText("cr-analyst-role", s.crew.analystRole);
+    setText("cr-caster", s.crew.caster); setText("cr-caster-role", s.crew.casterRole);
+    setText("cr-analyst", s.crew.analyst); setText("cr-analyst-role", s.crew.analystRole);
     toggle("crew", s.crew.show);
-
-    // 다음경기
-    setText("nx-label", s.next.label);
-    setText("nx-date", s.next.datetime);
-    setText("nx-home-name", s.next.homeName);
-    setText("nx-home-flag", s.next.homeFlag);
-    setText("nx-away-name", s.next.awayName);
-    setText("nx-away-flag", s.next.awayFlag);
-    toggle("next", s.next.show);
-
+    // 득점기록
+    renderGoalLog(s); toggle("goallog", s.goallog.show);
     // 티커
     setText("tk-label", s.ticker.label);
     if ($("tk-text").textContent !== s.ticker.text) setText("tk-text", s.ticker.text);
     toggle("ticker", s.ticker.show);
+
+    placeBlocks(s);
+    document.body.classList.toggle("edit", editMode || !!s.editMode);
   }
 
-  // SSE 연결
+  // 타이머: 로컬 틱(서버 _clock 기준)
+  function tickClock() {
+    if (!S) return;
+    const t = S.timer, base = S._clock || {};
+    let sec = (t.elapsedSec || 0);
+    if (t.running && t.startedAt) sec += (Date.now() - t.startedAt) / 1000;
+    const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+    const ss = String(Math.floor(sec % 60)).padStart(2, "0");
+    const label = t.half === 2 ? t.label2 : t.label1;
+    setText("sb-clock", `${label} ${mm}:${ss}`);
+  }
+  setInterval(tickClock, 200);
+
+  // SSE
   const es = new EventSource("/events");
-  es.onmessage = (e) => { try { render(JSON.parse(e.data)); } catch {} };
-  es.onerror = () => {/* 자동 재연결 */};
+  es.onmessage = (e) => { try { render(JSON.parse(e.data)); tickClock(); } catch {} };
+
+  // ── 편집모드: 드래그 이동 + 휠 스케일 ──
+  let drag = null;
+  document.addEventListener("mousedown", (e) => {
+    if (!(editMode || (S && S.editMode))) return;
+    const block = e.target.closest(".block"); if (!block) return;
+    const key = block.dataset.block; const L = S.layout[key];
+    drag = { key, block, sx: e.clientX, sy: e.clientY, ox: L.x, oy: L.y };
+    e.preventDefault();
+  });
+  document.addEventListener("mousemove", (e) => {
+    if (!drag) return;
+    const nx = drag.ox + (e.clientX - drag.sx), ny = drag.oy + (e.clientY - drag.sy);
+    drag.block.style.left = nx + "px"; drag.block.style.top = ny + "px";
+    S.layout[drag.key].x = nx; S.layout[drag.key].y = ny;
+    const tag = drag.block.querySelector(".tag");
+    if (tag) tag.textContent = `${drag.key}  x:${Math.round(nx)} y:${Math.round(ny)} ×${(S.layout[drag.key].scale||1).toFixed(2)}`;
+  });
+  document.addEventListener("mouseup", () => {
+    if (!drag) return;
+    const key = drag.key, L = S.layout[key]; drag = null;
+    fetch("/update", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ layout: { [key]: { x: L.x, y: L.y } } }) });
+  });
+  document.addEventListener("wheel", (e) => {
+    if (!(editMode || (S && S.editMode))) return;
+    const block = e.target.closest(".block"); if (!block) return;
+    const key = block.dataset.block, L = S.layout[key];
+    let sc = (L.scale || 1) + (e.deltaY < 0 ? 0.03 : -0.03); sc = Math.max(0.3, Math.min(3, sc));
+    L.scale = sc; block.style.transform = `scale(${sc})`;
+    e.preventDefault();
+    clearTimeout(window.__wheelT);
+    window.__wheelT = setTimeout(() => fetch("/update", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ layout: { [key]: { scale: sc } } }) }), 250);
+  }, { passive: false });
 </script>
 </body>
 </html>

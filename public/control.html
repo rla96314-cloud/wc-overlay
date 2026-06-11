@@ -5,53 +5,77 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>WC Overlay · 컨트롤</title>
 <style>
-  :root{--maroon:#6b1f3f;--maroon2:#8a2750;--bg:#15101a;--card:#211826;--line:#36293f;--txt:#f0e9ef;--muted:#b59fb0;}
+  :root{--maroon:#6b1f3f;--maroon2:#8a2750;--card:#211826;--line:#36293f;--txt:#f0e9ef;--muted:#b59fb0;
+    --home:#3f7dd6;--away:#d65a5a;--ok:#4ade80;}
   *{box-sizing:border-box;}
   body{margin:0;font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
-    background:linear-gradient(160deg,#1a1220,#0e0a13);color:var(--txt);padding:24px;min-height:100vh;}
+    background:linear-gradient(160deg,#1a1220,#0e0a13);color:var(--txt);padding:22px;min-height:100vh;}
   header{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
-  header h1{font-size:22px;margin:0;font-weight:900;}
-  header .links{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
-  header a{color:#e9c87f;text-decoration:none;font-weight:700;font-size:14px;
-    border:1px solid var(--line);padding:7px 12px;border-radius:8px;}
+  header h1{font-size:21px;margin:0;font-weight:900;}
+  header .links{margin-left:auto;display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
+  header a{color:#e9c87f;text-decoration:none;font-weight:700;font-size:13px;border:1px solid var(--line);padding:7px 11px;border-radius:8px;}
   header a:hover{background:#2a2030;}
   .status{font-size:13px;color:var(--muted);}
   .status .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#666;margin-right:6px;vertical-align:middle;}
-  .status.on .dot{background:#4ade80;box-shadow:0 0 8px #4ade80;}
+  .status.on .dot{background:var(--ok);box-shadow:0 0 8px var(--ok);}
 
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
-  .card h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:10px;font-weight:800;}
-  .card h2 .tag{font-size:12px;color:var(--muted);font-weight:600;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:15px;align-items:start;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 17px;}
+  .card.wide{grid-column:1 / -1;}
+  .card h2{font-size:15px;margin:0 0 13px;display:flex;align-items:center;gap:9px;font-weight:800;}
+  .card h2 .tg{font-size:11px;color:var(--muted);font-weight:600;}
 
-  /* 토글 스위치 */
-  .sw{margin-left:auto;position:relative;display:inline-block;width:50px;height:28px;}
+  .sw{margin-left:auto;position:relative;display:inline-block;width:48px;height:27px;}
   .sw input{opacity:0;width:0;height:0;}
   .sw .track{position:absolute;inset:0;background:#4a3a52;border-radius:999px;transition:.2s;cursor:pointer;}
-  .sw .track::before{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.2s;}
+  .sw .track::before{content:"";position:absolute;left:3px;top:3px;width:21px;height:21px;background:#fff;border-radius:50%;transition:.2s;}
   .sw input:checked + .track{background:var(--maroon2);}
-  .sw input:checked + .track::before{transform:translateX(22px);}
+  .sw input:checked + .track::before{transform:translateX(21px);}
 
-  .row{display:flex;gap:10px;margin-bottom:10px;}
-  .field{flex:1;display:flex;flex-direction:column;gap:5px;}
-  .field label{font-size:12px;color:var(--muted);font-weight:600;}
-  .field input{background:#160f1d;border:1px solid var(--line);border-radius:8px;color:var(--txt);
-    padding:9px 11px;font-size:15px;font-family:inherit;width:100%;}
-  .field input:focus{outline:none;border-color:var(--maroon2);}
-  .field.w-flag{flex:0 0 78px;}
-  .field.w-score{flex:0 0 78px;}
+  .row{display:flex;gap:9px;margin-bottom:9px;}
+  .field{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0;}
+  .field label{font-size:11px;color:var(--muted);font-weight:600;}
+  .field input,.field select{background:#160f1d;border:1px solid var(--line);border-radius:8px;color:var(--txt);
+    padding:9px 10px;font-size:14px;font-family:inherit;width:100%;}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--maroon2);}
+  .field.w-flag{flex:0 0 70px;} .field.w-sm{flex:0 0 88px;}
+  button{font-family:inherit;font-weight:800;font-size:13px;border:none;border-radius:9px;padding:10px 15px;cursor:pointer;}
+  .btn-primary{background:var(--maroon2);color:#fff;} .btn-primary:hover{background:#a02f60;}
+  .btn-ghost{background:#2a2030;color:var(--txt);border:1px solid var(--line);} .btn-ghost:hover{background:#352942;}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
 
-  .btnbar{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
-  button{font-family:inherit;font-weight:800;font-size:14px;border:none;border-radius:9px;
-    padding:11px 18px;cursor:pointer;}
-  .btn-primary{background:var(--maroon2);color:#fff;}
-  .btn-primary:hover{background:#a02f60;}
-  .btn-ghost{background:#2a2030;color:var(--txt);border:1px solid var(--line);}
-  .btn-ghost:hover{background:#352942;}
-  .hint{font-size:12px;color:var(--muted);margin-top:6px;}
-  .quick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
-  .quick button{padding:7px 12px;font-size:13px;background:#2a2030;color:var(--txt);border:1px solid var(--line);}
-  .quick button:hover{background:var(--maroon);}
+  /* 득점 패널 */
+  .score2{display:flex;gap:12px;}
+  .scol{flex:1;background:#170f1e;border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;}
+  .scol.home{border-top:3px solid var(--home);} .scol.away{border-top:3px solid var(--away);}
+  .scol .tname{font-size:14px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .scol .sval{font-size:46px;font-weight:900;margin:4px 0 8px;}
+  .scol .pm{display:flex;gap:8px;justify-content:center;}
+  .scol .pm button{width:54px;height:46px;font-size:22px;padding:0;}
+  .scol .plus{background:var(--ok);color:#06270f;} .scol .plus:hover{filter:brightness(1.1);}
+  .scol .minus{background:#3a2a32;color:#fff;}
+  .scol input.scorer{margin-top:9px;font-size:12px;text-align:center;}
+
+  /* 타이머 */
+  .timer-disp{font-size:40px;font-weight:900;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:2px;margin:2px 0 10px;}
+  .timer-disp small{font-size:18px;color:var(--muted);margin-right:10px;letter-spacing:0;}
+  .half-tabs{display:flex;gap:8px;margin-bottom:10px;}
+  .half-tabs button{flex:1;background:#2a2030;color:var(--muted);}
+  .half-tabs button.on{background:var(--maroon2);color:#fff;}
+  .timer-btns{display:flex;gap:8px;}
+  .timer-btns button{flex:1;}
+  .btn-start{background:var(--ok);color:#06270f;} .btn-pause{background:#caa15a;color:#2a1d00;}
+
+  /* 득점기록 편집 */
+  .logrow{display:flex;gap:7px;align-items:center;margin-bottom:7px;}
+  .logrow .min{flex:0 0 60px;} .logrow .sc{flex:1;}
+  .logrow .side{flex:0 0 14px;height:14px;border-radius:3px;}
+  .logrow .side.home{background:var(--home);} .logrow .side.away{background:var(--away);}
+  .logrow .del{flex:0 0 auto;background:#3a2a32;padding:7px 10px;}
+
+  .btnbar{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center;}
+  .apiout{font-size:12px;margin-top:8px;color:var(--muted);}
+  .apiout.err{color:#f0a0a0;}
 </style>
 </head>
 <body>
@@ -59,212 +83,344 @@
   <h1>⚽ 월드컵 오버레이 컨트롤</h1>
   <div class="links">
     <span class="status" id="status"><span class="dot"></span><span id="status-txt">연결 중…</span></span>
-    <a href="/" target="_blank">오버레이 열기 ↗</a>
+    <a href="/" target="_blank">오버레이 ↗</a>
+    <a href="/?edit=1" target="_blank">오버레이(편집) ↗</a>
   </div>
 </header>
 
 <div class="grid">
 
-  <!-- 스코어보드 -->
+  <!-- 득점 & 골 알림 -->
   <div class="card">
-    <h2>스코어보드 <span class="tag">좌상단</span>
-      <label class="sw"><input type="checkbox" data-show="scoreboard"><span class="track"></span></label>
+    <h2>득점 / 골 알림 <span class="tg">중앙</span>
+      <label class="sw" title="골 알림 표시"><input type="checkbox" data-bool="goal.show"><span class="track"></span></label>
+    </h2>
+    <div class="score2">
+      <div class="scol home">
+        <div class="tname" id="sc-home-name">홈</div>
+        <div class="sval" id="sc-home-val">0</div>
+        <div class="pm"><button class="minus" data-score="home,-1">−</button><button class="plus" data-score="home,1">＋</button></div>
+        <input class="scorer field" id="scorer-home" placeholder="득점자(선택)">
+      </div>
+      <div class="scol away">
+        <div class="tname" id="sc-away-name">원정</div>
+        <div class="sval" id="sc-away-val">0</div>
+        <div class="pm"><button class="minus" data-score="away,-1">−</button><button class="plus" data-score="away,1">＋</button></div>
+        <input class="scorer field" id="scorer-away" placeholder="득점자(선택)">
+      </div>
+    </div>
+    <div class="hint">＋ 누르면 ① 점수 +1 ② 골 알림 표시(타이머 시간 기준) ③ 득점 기록 추가 ④ OSC 전송. 득점자 입력 시 기록에 함께 저장됩니다.</div>
+    <div class="row" style="margin-top:10px">
+      <div class="field w-sm"><label>알림 자동숨김(초)</label><input type="number" data-k="goal.autoHideSec"></div>
+      <div class="field"><label>알림 문구(자동: 골! 팀명)</label><input data-k="goal.headline"></div>
+    </div>
+  </div>
+
+  <!-- 타이머 -->
+  <div class="card">
+    <h2>경기 타이머 <span class="tg">스코어보드 시계</span></h2>
+    <div class="timer-disp" id="timer-disp"><small id="timer-half">전반</small>00:00</div>
+    <div class="half-tabs">
+      <button data-half="1" id="half1">전반</button>
+      <button data-half="2" id="half2">후반</button>
+    </div>
+    <div class="timer-btns">
+      <button class="btn-start" id="t-start">▶ 시작</button>
+      <button class="btn-pause" id="t-pause">⏸ 정지</button>
+      <button class="btn-ghost" id="t-reset">⟲ 리셋</button>
+    </div>
+    <div class="hint">시작을 누르면 타이머가 흐르고, 골 알림 시간은 이 시계 기준으로 자동 표기됩니다. 전·후반은 따로 관리(후반은 45분+).</div>
+  </div>
+
+  <!-- 경기 불러오기 -->
+  <div class="card">
+    <h2>경기 불러오기 <span class="tg">football-data.org</span>
+      <label class="sw" title="라이브 점수 자동동기화"><input type="checkbox" data-bool="api.liveSync"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field"><label>API 토큰</label><input data-k="api.token" placeholder="football-data.org 무료 토큰"></div>
+      <div class="field w-sm"><label>대회코드</label><input data-k="api.competition" placeholder="WC"></div>
+    </div>
+    <div class="row">
+      <button class="btn-ghost" id="load-matches">경기 목록 불러오기</button>
+      <button class="btn-ghost" id="sync-match">지금 동기화</button>
+    </div>
+    <div class="row"><div class="field"><label>경기 선택</label><select id="match-select"><option value="">— 목록을 먼저 불러오세요 —</option></select></div></div>
+    <button class="btn-primary" id="apply-match">선택 경기 적용 (팀·국기·점수)</button>
+    <div class="apiout" id="api-out">무료 토큰 발급: football-data.org/client/register · 라이브 동기화 ON 시 20초마다 점수·득점자 갱신.</div>
+  </div>
+
+  <!-- OSC -->
+  <div class="card">
+    <h2>OSC 전송 <span class="tg">득점 시 다른 PC로</span>
+      <label class="sw"><input type="checkbox" data-bool="osc.enabled"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field"><label>대상 IP</label><input data-k="osc.host" placeholder="127.0.0.1"></div>
+      <div class="field w-sm"><label>포트</label><input type="number" data-k="osc.port"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>홈 득점 주소</label><input data-k="osc.addrHome"></div>
+      <div class="field"><label>원정 득점 주소</label><input data-k="osc.addrAway"></div>
+    </div>
+    <div class="hint">홈/원정 ＋ 누를 때 해당 주소로 OSC 메시지(인자 없음)만 UDP 전송합니다.</div>
+  </div>
+
+  <!-- 스코어보드 정보 -->
+  <div class="card">
+    <h2>스코어보드 <span class="tg">좌상단</span>
+      <label class="sw"><input type="checkbox" data-bool="scoreboard.show"><span class="track"></span></label>
     </h2>
     <div class="row">
       <div class="field"><label>대회명</label><input data-k="scoreboard.title"></div>
-      <div class="field w-score"><label>라운드</label><input data-k="scoreboard.round"></div>
+      <div class="field w-sm"><label>라운드</label><input data-k="scoreboard.round"></div>
     </div>
     <div class="row">
       <div class="field w-flag"><label>국기</label><input data-k="scoreboard.homeFlag"></div>
       <div class="field"><label>홈팀</label><input data-k="scoreboard.homeName"></div>
-      <div class="field w-score"><label>점수</label><input type="number" data-k="scoreboard.homeScore"></div>
     </div>
     <div class="row">
       <div class="field w-flag"><label>국기</label><input data-k="scoreboard.awayFlag"></div>
       <div class="field"><label>원정팀</label><input data-k="scoreboard.awayName"></div>
-      <div class="field w-score"><label>점수</label><input type="number" data-k="scoreboard.awayScore"></div>
     </div>
-    <div class="row">
-      <div class="field"><label>경기시간</label><input data-k="scoreboard.clock"></div>
-    </div>
-    <div class="quick">
-      <button data-score="home+">홈 +1</button>
-      <button data-score="home-">홈 −1</button>
-      <button data-score="away+">원정 +1</button>
-      <button data-score="away-">원정 −1</button>
-    </div>
+    <div class="hint">국기는 이모지(🇰🇷) 또는 이미지 URL 둘 다 가능. 경기 불러오기로 적용하면 자동 입력됩니다.</div>
   </div>
 
-  <!-- 골 알림 -->
+  <!-- 득점 기록 -->
   <div class="card">
-    <h2>골 알림 <span class="tag">중앙</span>
-      <label class="sw"><input type="checkbox" data-show="goal"><span class="track"></span></label>
+    <h2>득점 기록 <span class="tg">우측 창</span>
+      <label class="sw"><input type="checkbox" data-bool="goallog.show"><span class="track"></span></label>
     </h2>
-    <div class="row">
-      <div class="field w-score"><label>시간 (예: 37')</label><input data-k="goal.minute"></div>
-      <div class="field"><label>헤드라인</label><input data-k="goal.headline"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label>선수 (번호. 이름)</label><input data-k="goal.player"></div>
-    </div>
-    <div class="hint">자주 켜고 끄는 요소입니다. 위 스위치로 ON/OFF 하세요.</div>
-  </div>
-
-  <!-- 우상단 배너 -->
-  <div class="card">
-    <h2>진출 배너 <span class="tag">우상단</span>
-      <label class="sw"><input type="checkbox" data-show="banner"><span class="track"></span></label>
-    </h2>
-    <div class="row">
-      <div class="field"><label>1번째 줄</label><input data-k="banner.line1"></div>
-    </div>
-    <div class="row">
-      <div class="field"><label>2번째 줄</label><input data-k="banner.line2"></div>
-      <div class="field w-flag"><label>국기</label><input data-k="banner.flag"></div>
-    </div>
+    <div class="row"><div class="field"><label>제목</label><input data-k="goallog.title"></div></div>
+    <div id="log-list"></div>
+    <div class="hint">＋ 득점 시 자동 추가됩니다. 여기서 시간/득점자 수정·삭제 가능.</div>
   </div>
 
   <!-- 중계진 -->
   <div class="card">
-    <h2>중계진 <span class="tag">좌하단</span>
-      <label class="sw"><input type="checkbox" data-show="crew"><span class="track"></span></label>
+    <h2>중계진 <span class="tg">좌하단</span>
+      <label class="sw"><input type="checkbox" data-bool="crew.show"><span class="track"></span></label>
     </h2>
     <div class="row">
       <div class="field"><label>캐스터</label><input data-k="crew.caster"></div>
-      <div class="field"><label>직함</label><input data-k="crew.casterRole"></div>
+      <div class="field w-sm"><label>직함</label><input data-k="crew.casterRole"></div>
     </div>
     <div class="row">
       <div class="field"><label>해설</label><input data-k="crew.analyst"></div>
-      <div class="field"><label>직함</label><input data-k="crew.analystRole"></div>
-    </div>
-  </div>
-
-  <!-- 다음경기 -->
-  <div class="card">
-    <h2>다음경기 <span class="tag">우하단</span>
-      <label class="sw"><input type="checkbox" data-show="next"><span class="track"></span></label>
-    </h2>
-    <div class="row">
-      <div class="field"><label>라벨</label><input data-k="next.label"></div>
-      <div class="field"><label>일시</label><input data-k="next.datetime"></div>
-    </div>
-    <div class="row">
-      <div class="field w-flag"><label>국기</label><input data-k="next.homeFlag"></div>
-      <div class="field"><label>홈팀</label><input data-k="next.homeName"></div>
-    </div>
-    <div class="row">
-      <div class="field w-flag"><label>국기</label><input data-k="next.awayFlag"></div>
-      <div class="field"><label>원정팀</label><input data-k="next.awayName"></div>
+      <div class="field w-sm"><label>직함</label><input data-k="crew.analystRole"></div>
     </div>
   </div>
 
   <!-- 뉴스 티커 -->
   <div class="card">
-    <h2>뉴스 티커 <span class="tag">하단</span>
-      <label class="sw"><input type="checkbox" data-show="ticker"><span class="track"></span></label>
+    <h2>뉴스 티커 <span class="tg">하단</span>
+      <label class="sw"><input type="checkbox" data-bool="ticker.show"><span class="track"></span></label>
     </h2>
     <div class="row">
-      <div class="field w-score"><label>라벨</label><input data-k="ticker.label"></div>
+      <div class="field w-sm"><label>모드</label><select data-k="ticker.mode"><option value="auto">자동(뉴스)</option><option value="manual">수동</option></select></div>
+      <div class="field"><label>검색어(자동)</label><input data-k="ticker.query" placeholder="월드컵"></div>
     </div>
-    <div class="row">
-      <div class="field"><label>자막 (흐르는 텍스트)</label><input data-k="ticker.text"></div>
-    </div>
+    <div class="row"><div class="field"><label>라벨</label><input data-k="ticker.label"></div>
+      <button class="btn-ghost" id="news-refresh" style="align-self:flex-end">지금 갱신</button></div>
+    <div class="row"><div class="field"><label>자막 문구(수동 모드에서 사용)</label><input data-k="ticker.text"></div></div>
+    <div class="hint">자동 모드: 구글뉴스에서 검색어 헤드라인을 5분마다 가져옵니다(네이버 기사 포함).</div>
+  </div>
+
+  <!-- 레이아웃 -->
+  <div class="card wide">
+    <h2>위치 / 크기 <span class="tg">각 요소 X·Y·배율</span>
+      <label class="sw" title="오버레이 드래그 편집모드"><input type="checkbox" data-bool="editMode"><span class="track"></span></label>
+    </h2>
+    <div class="hint" style="margin-bottom:12px">편집모드 ON 후 <b>오버레이(편집) ↗</b>를 열면 마우스로 끌어 이동, 휠로 크기 조절됩니다. 아래 슬라이더로도 조절 가능.</div>
+    <div class="grid" id="layout-grid"></div>
   </div>
 
 </div>
 
 <div class="btnbar">
-  <button class="btn-primary" id="save">전체 저장 / 적용</button>
-  <button class="btn-ghost" id="reset">기본값으로 초기화</button>
-  <span class="hint">입력하면 즉시 오버레이에 반영됩니다. (입력 멈춤 후 자동 적용)</span>
+  <button class="btn-ghost" id="reset">전체 기본값 초기화</button>
+  <span class="hint">모든 변경은 즉시 오버레이에 반영됩니다.</span>
 </div>
 
 <script>
   let state = {};
-  const statusEl = document.getElementById("status");
-  const statusTxt = document.getElementById("status-txt");
+  const $ = (s) => document.querySelector(s);
+  const statusEl = $("#status"), statusTxt = $("#status-txt");
+  const getPath = (o, p) => p.split(".").reduce((a, k) => a && a[k], o);
+  function setPath(o, p, v) { const ks = p.split("."); let c = o; for (let i = 0; i < ks.length - 1; i++) { c[ks[i]] = c[ks[i]] || {}; c = c[ks[i]]; } c[ks[ks.length - 1]] = v; }
 
-  function getPath(obj, path){ return path.split(".").reduce((o,k)=>o&&o[k], obj); }
-  function setPath(obj, path, val){
-    const ks = path.split("."); let o = obj;
-    for (let i=0;i<ks.length-1;i++){ o[ks[i]] = o[ks[i]]||{}; o = o[ks[i]]; }
-    o[ks[ks.length-1]] = val;
+  async function update(patch) {
+    try { await fetch("/update", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) }); }
+    catch (e) { console.error(e); }
+  }
+  async function post(url, body) {
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+    return r.json();
   }
 
-  function fillForm(s){
-    document.querySelectorAll("[data-k]").forEach(inp=>{
+  const LAYOUT_KEYS = { scoreboard: "스코어보드", goal: "골 알림", crew: "중계진", goallog: "득점기록", ticker: "뉴스티커" };
+
+  function buildLayoutPanel() {
+    const g = $("#layout-grid");
+    g.innerHTML = Object.entries(LAYOUT_KEYS).map(([k, name]) => `
+      <div class="card" style="background:#170f1e">
+        <div style="font-weight:800;margin-bottom:8px">${name}</div>
+        <div class="row"><div class="field w-sm"><label>X</label><input type="number" data-layout="${k}.x"></div>
+          <div class="field w-sm"><label>Y</label><input type="number" data-layout="${k}.y"></div>
+          <div class="field"><label>배율 <span id="scv-${k}"></span></label>
+            <input type="range" min="0.3" max="3" step="0.02" data-layout="${k}.scale"></div></div>
+      </div>`).join("");
+    g.querySelectorAll("[data-layout]").forEach((inp) => {
+      inp.addEventListener("input", () => {
+        const [k, prop] = inp.dataset.layout.split(".");
+        const v = Number(inp.value);
+        update({ layout: { [k]: { [prop]: v } } });
+        if (prop === "scale") { const s = document.getElementById("scv-" + k); if (s) s.textContent = "×" + v.toFixed(2); }
+      });
+    });
+  }
+
+  function fillForm(s) {
+    document.querySelectorAll("[data-k]").forEach((inp) => {
       const v = getPath(s, inp.dataset.k);
       if (document.activeElement !== inp) inp.value = v ?? "";
     });
-    document.querySelectorAll("[data-show]").forEach(cb=>{
-      cb.checked = !!getPath(s, inp_show(cb.dataset.show));
+    document.querySelectorAll("[data-bool]").forEach((cb) => { cb.checked = !!getPath(s, cb.dataset.bool); });
+    document.querySelectorAll("[data-layout]").forEach((inp) => {
+      const [k, prop] = inp.dataset.layout.split(".");
+      if (document.activeElement !== inp) inp.value = getPath(s, "layout." + k + "." + prop) ?? "";
+      if (prop === "scale") { const sv = document.getElementById("scv-" + k); if (sv) sv.textContent = "×" + Number(getPath(s, "layout." + k + ".scale") || 1).toFixed(2); }
+    });
+    // 점수 표시
+    $("#sc-home-name").textContent = s.scoreboard.homeName || "홈";
+    $("#sc-away-name").textContent = s.scoreboard.awayName || "원정";
+    $("#sc-home-val").textContent = s.scoreboard.homeScore ?? 0;
+    $("#sc-away-val").textContent = s.scoreboard.awayScore ?? 0;
+    // 타이머 반
+    $("#half1").classList.toggle("on", s.timer.half === 1);
+    $("#half2").classList.toggle("on", s.timer.half === 2);
+    // 득점기록 리스트
+    renderLog(s);
+  }
+
+  function renderLog(s) {
+    const box = $("#log-list");
+    if (!s.goallog.items.length) { box.innerHTML = `<div class="hint">기록 없음</div>`; return; }
+    box.innerHTML = s.goallog.items.map((g, i) => `
+      <div class="logrow">
+        <span class="side ${g.team}"></span>
+        <input class="min field" data-log="${i}.minute" value="${(g.minute || "").replace(/"/g, "")}">
+        <input class="sc field" data-log="${i}.scorer" placeholder="${(g.teamName || "").replace(/"/g, "")}" value="${(g.scorer || "").replace(/"/g, "")}">
+        <button class="del" data-logdel="${i}">✕</button>
+      </div>`).join("");
+    box.querySelectorAll("[data-log]").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        const [i, prop] = inp.dataset.log.split(".");
+        const items = structuredClone(state.goallog.items);
+        items[i][prop] = inp.value;
+        update({ goallog: { items } });
+      });
+    });
+    box.querySelectorAll("[data-logdel]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const items = structuredClone(state.goallog.items);
+        items.splice(Number(btn.dataset.logdel), 1);
+        update({ goallog: { items } });
+      });
     });
   }
-  function inp_show(section){ return section + ".show"; }
 
-  async function loadState(){
-    const r = await fetch("/state"); state = await r.json(); fillForm(state);
+  // 입력(텍스트/숫자/셀렉트) → 디바운스 패치
+  let timer = null;
+  document.addEventListener("input", (e) => {
+    const inp = e.target.closest("[data-k]"); if (!inp) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      let v = inp.value; if (inp.type === "number") v = v === "" ? 0 : Number(v);
+      const patch = {}; setPath(patch, inp.dataset.k, v); update(patch);
+    }, 300);
+  });
+  // 셀렉트 즉시
+  document.querySelectorAll('select[data-k]').forEach((sel) => sel.addEventListener("change", () => {
+    const patch = {}; setPath(patch, sel.dataset.k, sel.value); update(patch);
+  }));
+  // 불리언
+  document.querySelectorAll("[data-bool]").forEach((cb) => cb.addEventListener("change", () => {
+    const patch = {}; setPath(patch, cb.dataset.bool, cb.checked); update(patch);
+  }));
+
+  // 득점 버튼
+  document.querySelectorAll("[data-score]").forEach((btn) => btn.addEventListener("click", () => {
+    const [team, delta] = btn.dataset.score.split(",");
+    const scorer = Number(delta) > 0 ? $("#scorer-" + team).value.trim() : "";
+    post("/score", { team, delta: Number(delta), scorer });
+    if (Number(delta) > 0) $("#scorer-" + team).value = "";
+  }));
+
+  // 타이머
+  $("#t-start").addEventListener("click", () => post("/timer", { cmd: "start" }));
+  $("#t-pause").addEventListener("click", () => post("/timer", { cmd: "pause" }));
+  $("#t-reset").addEventListener("click", () => post("/timer", { cmd: "reset" }));
+  $("#half1").addEventListener("click", () => post("/timer", { cmd: "half", half: 1 }));
+  $("#half2").addEventListener("click", () => post("/timer", { cmd: "half", half: 2 }));
+
+  // 타이머 로컬 표시
+  function tickTimer() {
+    if (!state.timer) return;
+    const t = state.timer;
+    let sec = t.elapsedSec || 0;
+    if (t.running && t.startedAt) sec += (Date.now() - t.startedAt) / 1000;
+    const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+    const ss = String(Math.floor(sec % 60)).padStart(2, "0");
+    $("#timer-half").textContent = t.half === 2 ? (t.label2 || "후반") : (t.label1 || "전반");
+    $("#timer-disp").childNodes[1].nodeValue = `${mm}:${ss}`;
   }
+  setInterval(tickTimer, 200);
 
-  async function update(patch){
-    try{
-      const r = await fetch("/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});
-      const j = await r.json(); if (j.state) state = j.state;
-    }catch(e){ console.error(e); }
-  }
+  // 뉴스 갱신
+  $("#news-refresh").addEventListener("click", async () => { await post("/news/refresh"); });
 
-  // 토글 스위치 → 즉시 반영
-  document.querySelectorAll("[data-show]").forEach(cb=>{
-    cb.addEventListener("change",()=>{
-      const section = cb.dataset.show;
-      update({ [section]: { show: cb.checked } });
-    });
+  // football-data
+  $("#load-matches").addEventListener("click", async () => {
+    const out = $("#api-out"); out.className = "apiout"; out.textContent = "불러오는 중…";
+    const j = await post("/api/matches", { token: getPath(state, "api.token"), competition: getPath(state, "api.competition") || "WC" });
+    if (!j.ok) { out.className = "apiout err"; out.textContent = "오류: " + j.error; return; }
+    const sel = $("#match-select");
+    const fmt = (m) => {
+      const d = m.utcDate ? new Date(m.utcDate) : null;
+      const ds = d ? `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "";
+      const sc = (m.score.home != null) ? ` (${m.score.home}-${m.score.away})` : "";
+      return `${ds}  ${m.home.name} vs ${m.away.name}${sc} [${m.status}]`;
+    };
+    sel.innerHTML = `<option value="">— ${j.matches.length}경기 —</option>` +
+      j.matches.map((m) => `<option value="${m.id}">${fmt(m).replace(/"/g, "")}</option>`).join("");
+    out.className = "apiout"; out.textContent = `${j.matches.length}경기 불러옴. 경기를 선택하고 적용하세요.`;
+  });
+  $("#apply-match").addEventListener("click", async () => {
+    const id = $("#match-select").value; if (!id) return;
+    const out = $("#api-out"); out.textContent = "적용 중…"; out.className = "apiout";
+    const j = await post("/api/select", { matchId: id });
+    out.textContent = j.ok ? "경기 적용 완료." : "오류: " + j.error;
+    out.className = j.ok ? "apiout" : "apiout err";
+  });
+  $("#sync-match").addEventListener("click", async () => {
+    const out = $("#api-out"); const j = await post("/api/sync");
+    out.textContent = j.ok ? "동기화 완료." : "오류: " + j.error; out.className = j.ok ? "apiout" : "apiout err";
   });
 
-  // 입력 → 디바운스 적용
-  let timer=null;
-  function buildPatchFromForm(){
-    const patch={};
-    document.querySelectorAll("[data-k]").forEach(inp=>{
-      let v = inp.value;
-      if (inp.type === "number") v = v===""?0:Number(v);
-      setPath(patch, inp.dataset.k, v);
-    });
-    return patch;
-  }
-  document.querySelectorAll("[data-k]").forEach(inp=>{
-    inp.addEventListener("input",()=>{
-      clearTimeout(timer);
-      timer=setTimeout(()=>update(buildPatchFromForm()), 350);
-    });
+  // 초기화
+  $("#reset").addEventListener("click", async () => {
+    if (!confirm("모든 설정을 기본값으로 초기화할까요?")) return;
+    await update({ __reset: true });
   });
 
-  document.getElementById("save").addEventListener("click",()=>update(buildPatchFromForm()));
-  document.getElementById("reset").addEventListener("click",async()=>{
-    if(!confirm("기본값(이미지 디자인)으로 초기화할까요?")) return;
-    await update({__reset:true}); await loadState();
-  });
-
-  // 점수 빠른 조정
-  document.querySelectorAll("[data-score]").forEach(btn=>{
-    btn.addEventListener("click",()=>{
-      const act = btn.dataset.score;
-      const k = act.startsWith("home") ? "homeScore" : "awayScore";
-      let cur = Number(getPath(state,"scoreboard."+k))||0;
-      cur += act.endsWith("+") ? 1 : -1; if (cur<0) cur=0;
-      const inp = document.querySelector(`[data-k="scoreboard.${k}"]`);
-      if (inp) inp.value = cur;
-      update({ scoreboard: { [k]: cur } });
-    });
-  });
-
-  // 다른 곳(또는 오버레이)에서 바뀐 상태도 폼에 동기화
+  // SSE
   const es = new EventSource("/events");
-  es.onopen = ()=>{ statusEl.classList.add("on"); statusTxt.textContent="연결됨"; };
-  es.onmessage = (e)=>{ try{ state = JSON.parse(e.data); fillForm(state); }catch{} };
-  es.onerror = ()=>{ statusEl.classList.remove("on"); statusTxt.textContent="연결 끊김 — 재연결 중"; };
+  es.onopen = () => { statusEl.classList.add("on"); statusTxt.textContent = "연결됨"; };
+  es.onmessage = (e) => { try { state = JSON.parse(e.data); fillForm(state); tickTimer(); } catch {} };
+  es.onerror = () => { statusEl.classList.remove("on"); statusTxt.textContent = "연결 끊김 — 재연결 중"; };
 
-  loadState();
+  buildLayoutPanel();
 </script>
 </body>
 </html>
