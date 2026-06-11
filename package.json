@@ -6,5 +6,8 @@
   "scripts": {
     "start": "node server.js"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^25.1.0"
+  }
 }

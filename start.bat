@@ -17,6 +17,11 @@ if errorlevel 1 (
   exit /b 1
 )
 
+if not exist "node_modules\puppeteer" (
+  echo First run: installing packages ^(puppeteer + Chromium, a few minutes^)...
+  call npm install
+)
+
 echo   Overlay (vMix Web Browser):  http://localhost:8093/
 echo   Control page              :  http://localhost:8093/control
 echo   Stop                      :  press Ctrl+C in this window

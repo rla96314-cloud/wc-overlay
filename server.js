@@ -12,6 +12,8 @@ const fs = require("fs");
 const path = require("path");
 const dgram = require("dgram");
 const os = require("os");
+let watcher = null;   // 위플랩 별풍선 감시기(puppeteer) — 설치돼 있을 때만 로드
+try { watcher = require("./watcher"); } catch (e) { console.log("위플랩 감시 비활성(puppeteer 미설치):", e.message); }
 
 const PORT = process.env.PORT || 8093;
 const DIR = __dirname;
@@ -43,6 +45,7 @@ const DEFAULT_STATE = {
     goallog:    { x: 90, y: 620, scale: 1 },
     ticker:     { x: 90, y: 954, scale: 1 },
     formation:  { x: 360, y: 200, scale: 1 },
+    donation:   { x: 580, y: 250, scale: 1 },
   },
   scoreboard: {
     show: true,
@@ -88,6 +91,8 @@ const DEFAULT_STATE = {
     query: "월드컵",
     text: "'캡틴' 손흥민, 2026 북중미 월드컵 출격 준비 완료",
     headlines: [],
+    display: "scroll",       // scroll=흐름 / rotate=한 헤드라인씩
+    rotateSec: 6,            // rotate 모드 전환 주기(초)
   },
   osc: {
     enabled: false,            // 전체 ON/OFF
@@ -133,6 +138,15 @@ const DEFAULT_STATE = {
     away: "example-goal.wav",
   },
   soundEvent: { token: 0, team: "" },  // 득점/테스트 시 증가 → 오버레이가 감지해 재생
+  weflab: { url: "", watching: false, frames: 0, lastAt: 0, error: null },  // 위플랩 별풍선 감시
+  donation: {                // 별풍선 알림 표시
+    show: false,
+    enabled: true,
+    template: "🎈 {donor}님 별풍선 {balloons}개 감사합니다! {message}",
+    durationSec: 6,
+    minBalloons: 0,          // 이 개수 이상만 표시(0=전부)
+  },
+  donationEvent: { token: 0, text: "", donor: "", balloons: 0, amount: 0, message: "" },
 };
 
 function structuredCloneSafe(o) { return JSON.parse(JSON.stringify(o)); }
@@ -158,6 +172,9 @@ function deepMerge(base, patch) {
 let state = loadState();
 // 재시작 시 타이머는 멈춘 상태로
 state.timer.running = false; state.timer.startedAt = null;
+// 재시작 시 감시는 꺼진 상태(수동 시작)
+if (state.weflab) { state.weflab.watching = false; }
+if (state.donation) { state.donation.show = false; }
 
 const clients = new Set();
 function broadcast() {
@@ -375,6 +392,34 @@ async function loadLineups() {
   return { home: home.team?.name, away: away.team?.name, homeFormation: home.formation, awayFormation: away.formation };
 }
 
+// ── 별풍선 알림 ──────────────────────────────────────────────
+let donationHideTimer = null;
+function fireDonation(ev) {
+  if (!state.donation.enabled) return;
+  const balloons = Number(ev.balloons) || 0;
+  if (balloons < (Number(state.donation.minBalloons) || 0)) return;   // 임계값 미만 무시
+  const text = String(state.donation.template || "")
+    .replace(/\{donor\}/g, ev.donor || "익명")
+    .replace(/\{balloons\}/g, balloons)
+    .replace(/\{amount\}/g, Number(ev.amount) || 0)
+    .replace(/\{message\}/g, ev.message || "")
+    .replace(/\s+/g, " ").trim();
+  state.donationEvent = {
+    token: ((state.donationEvent && state.donationEvent.token) || 0) + 1,
+    text, donor: ev.donor || "", balloons, amount: Number(ev.amount) || 0, message: ev.message || "",
+  };
+  state.donation.show = true;
+  saveState(state); broadcast();
+  if (donationHideTimer) clearTimeout(donationHideTimer);
+  const dur = Number(state.donation.durationSec) || 6;
+  if (dur > 0) donationHideTimer = setTimeout(() => { state.donation.show = false; saveState(state); broadcast(); }, dur * 1000);
+}
+// 위플랩 감시기 이벤트 연결
+if (watcher) {
+  watcher.onEvent((ev) => fireDonation(ev));
+  watcher.onStatus((st) => { state.weflab.watching = !!st.watching; state.weflab.frames = st.frames || 0; state.weflab.error = st.error || null; broadcast(); });
+}
+
 // ── HTTP ─────────────────────────────────────────────────────
 const NOCACHE = { "Cache-Control": "no-store, no-cache, must-revalidate", Pragma: "no-cache", Expires: "0" };
 function serveFile(res, file, type) {
@@ -512,6 +557,25 @@ const server = http.createServer(async (req, res) => {
       saveState(state);
       try { const r = await loadLineups(); return json(res, 200, { ok: true, info: r }); }
       catch (e) { return json(res, 200, { ok: false, error: e.message }); }
+    }
+
+    // 위플랩 별풍선 감시 시작/정지/테스트
+    if (url === "/weflab/start" && req.method === "POST") {
+      const { url: wurl } = JSON.parse((await readBody(req)) || "{}");
+      if (wurl != null) state.weflab.url = wurl;
+      if (!watcher) return json(res, 200, { ok: false, error: "puppeteer 미설치 — 폴더에서 'npm install' 후 다시 시작하세요." });
+      try { await watcher.start(state.weflab.url); state.weflab.watching = true; saveState(state); broadcast(); return json(res, 200, { ok: true }); }
+      catch (e) { state.weflab.error = e.message; broadcast(); return json(res, 200, { ok: false, error: e.message }); }
+    }
+    if (url === "/weflab/stop" && req.method === "POST") {
+      if (watcher) { try { await watcher.stop(); } catch {} }
+      state.weflab.watching = false; saveState(state); broadcast();
+      return json(res, 200, { ok: true });
+    }
+    if (url === "/weflab/test" && req.method === "POST") {
+      const b = JSON.parse((await readBody(req)) || "{}");
+      fireDonation({ donor: b.donor || "테스트후원자", balloons: Number(b.balloons) || 0, amount: Number(b.amount) || 0, message: b.message || "테스트 메시지" });
+      return json(res, 200, { ok: true });
     }
 
     res.writeHead(404).end("not found");
