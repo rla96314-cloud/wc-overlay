@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>WC Overlay · 컨트롤</title>
+<style>
+  :root{--maroon:#6b1f3f;--maroon2:#8a2750;--bg:#15101a;--card:#211826;--line:#36293f;--txt:#f0e9ef;--muted:#b59fb0;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo",sans-serif;
+    background:linear-gradient(160deg,#1a1220,#0e0a13);color:var(--txt);padding:24px;min-height:100vh;}
+  header{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+  header h1{font-size:22px;margin:0;font-weight:900;}
+  header .links{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  header a{color:#e9c87f;text-decoration:none;font-weight:700;font-size:14px;
+    border:1px solid var(--line);padding:7px 12px;border-radius:8px;}
+  header a:hover{background:#2a2030;}
+  .status{font-size:13px;color:var(--muted);}
+  .status .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#666;margin-right:6px;vertical-align:middle;}
+  .status.on .dot{background:#4ade80;box-shadow:0 0 8px #4ade80;}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .card h2{font-size:16px;margin:0 0 14px;display:flex;align-items:center;gap:10px;font-weight:800;}
+  .card h2 .tag{font-size:12px;color:var(--muted);font-weight:600;}
+
+  /* 토글 스위치 */
+  .sw{margin-left:auto;position:relative;display:inline-block;width:50px;height:28px;}
+  .sw input{opacity:0;width:0;height:0;}
+  .sw .track{position:absolute;inset:0;background:#4a3a52;border-radius:999px;transition:.2s;cursor:pointer;}
+  .sw .track::before{content:"";position:absolute;left:3px;top:3px;width:22px;height:22px;background:#fff;border-radius:50%;transition:.2s;}
+  .sw input:checked + .track{background:var(--maroon2);}
+  .sw input:checked + .track::before{transform:translateX(22px);}
+
+  .row{display:flex;gap:10px;margin-bottom:10px;}
+  .field{flex:1;display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:12px;color:var(--muted);font-weight:600;}
+  .field input{background:#160f1d;border:1px solid var(--line);border-radius:8px;color:var(--txt);
+    padding:9px 11px;font-size:15px;font-family:inherit;width:100%;}
+  .field input:focus{outline:none;border-color:var(--maroon2);}
+  .field.w-flag{flex:0 0 78px;}
+  .field.w-score{flex:0 0 78px;}
+
+  .btnbar{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
+  button{font-family:inherit;font-weight:800;font-size:14px;border:none;border-radius:9px;
+    padding:11px 18px;cursor:pointer;}
+  .btn-primary{background:var(--maroon2);color:#fff;}
+  .btn-primary:hover{background:#a02f60;}
+  .btn-ghost{background:#2a2030;color:var(--txt);border:1px solid var(--line);}
+  .btn-ghost:hover{background:#352942;}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;}
+  .quick{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .quick button{padding:7px 12px;font-size:13px;background:#2a2030;color:var(--txt);border:1px solid var(--line);}
+  .quick button:hover{background:var(--maroon);}
+</style>
+</head>
+<body>
+<header>
+  <h1>⚽ 월드컵 오버레이 컨트롤</h1>
+  <div class="links">
+    <span class="status" id="status"><span class="dot"></span><span id="status-txt">연결 중…</span></span>
+    <a href="/" target="_blank">오버레이 열기 ↗</a>
+  </div>
+</header>
+
+<div class="grid">
+
+  <!-- 스코어보드 -->
+  <div class="card">
+    <h2>스코어보드 <span class="tag">좌상단</span>
+      <label class="sw"><input type="checkbox" data-show="scoreboard"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field"><label>대회명</label><input data-k="scoreboard.title"></div>
+      <div class="field w-score"><label>라운드</label><input data-k="scoreboard.round"></div>
+    </div>
+    <div class="row">
+      <div class="field w-flag"><label>국기</label><input data-k="scoreboard.homeFlag"></div>
+      <div class="field"><label>홈팀</label><input data-k="scoreboard.homeName"></div>
+      <div class="field w-score"><label>점수</label><input type="number" data-k="scoreboard.homeScore"></div>
+    </div>
+    <div class="row">
+      <div class="field w-flag"><label>국기</label><input data-k="scoreboard.awayFlag"></div>
+      <div class="field"><label>원정팀</label><input data-k="scoreboard.awayName"></div>
+      <div class="field w-score"><label>점수</label><input type="number" data-k="scoreboard.awayScore"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>경기시간</label><input data-k="scoreboard.clock"></div>
+    </div>
+    <div class="quick">
+      <button data-score="home+">홈 +1</button>
+      <button data-score="home-">홈 −1</button>
+      <button data-score="away+">원정 +1</button>
+      <button data-score="away-">원정 −1</button>
+    </div>
+  </div>
+
+  <!-- 골 알림 -->
+  <div class="card">
+    <h2>골 알림 <span class="tag">중앙</span>
+      <label class="sw"><input type="checkbox" data-show="goal"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field w-score"><label>시간 (예: 37')</label><input data-k="goal.minute"></div>
+      <div class="field"><label>헤드라인</label><input data-k="goal.headline"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>선수 (번호. 이름)</label><input data-k="goal.player"></div>
+    </div>
+    <div class="hint">자주 켜고 끄는 요소입니다. 위 스위치로 ON/OFF 하세요.</div>
+  </div>
+
+  <!-- 우상단 배너 -->
+  <div class="card">
+    <h2>진출 배너 <span class="tag">우상단</span>
+      <label class="sw"><input type="checkbox" data-show="banner"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field"><label>1번째 줄</label><input data-k="banner.line1"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>2번째 줄</label><input data-k="banner.line2"></div>
+      <div class="field w-flag"><label>국기</label><input data-k="banner.flag"></div>
+    </div>
+  </div>
+
+  <!-- 중계진 -->
+  <div class="card">
+    <h2>중계진 <span class="tag">좌하단</span>
+      <label class="sw"><input type="checkbox" data-show="crew"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field"><label>캐스터</label><input data-k="crew.caster"></div>
+      <div class="field"><label>직함</label><input data-k="crew.casterRole"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>해설</label><input data-k="crew.analyst"></div>
+      <div class="field"><label>직함</label><input data-k="crew.analystRole"></div>
+    </div>
+  </div>
+
+  <!-- 다음경기 -->
+  <div class="card">
+    <h2>다음경기 <span class="tag">우하단</span>
+      <label class="sw"><input type="checkbox" data-show="next"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field"><label>라벨</label><input data-k="next.label"></div>
+      <div class="field"><label>일시</label><input data-k="next.datetime"></div>
+    </div>
+    <div class="row">
+      <div class="field w-flag"><label>국기</label><input data-k="next.homeFlag"></div>
+      <div class="field"><label>홈팀</label><input data-k="next.homeName"></div>
+    </div>
+    <div class="row">
+      <div class="field w-flag"><label>국기</label><input data-k="next.awayFlag"></div>
+      <div class="field"><label>원정팀</label><input data-k="next.awayName"></div>
+    </div>
+  </div>
+
+  <!-- 뉴스 티커 -->
+  <div class="card">
+    <h2>뉴스 티커 <span class="tag">하단</span>
+      <label class="sw"><input type="checkbox" data-show="ticker"><span class="track"></span></label>
+    </h2>
+    <div class="row">
+      <div class="field w-score"><label>라벨</label><input data-k="ticker.label"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label>자막 (흐르는 텍스트)</label><input data-k="ticker.text"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="btnbar">
+  <button class="btn-primary" id="save">전체 저장 / 적용</button>
+  <button class="btn-ghost" id="reset">기본값으로 초기화</button>
+  <span class="hint">입력하면 즉시 오버레이에 반영됩니다. (입력 멈춤 후 자동 적용)</span>
+</div>
+
+<script>
+  let state = {};
+  const statusEl = document.getElementById("status");
+  const statusTxt = document.getElementById("status-txt");
+
+  function getPath(obj, path){ return path.split(".").reduce((o,k)=>o&&o[k], obj); }
+  function setPath(obj, path, val){
+    const ks = path.split("."); let o = obj;
+    for (let i=0;i<ks.length-1;i++){ o[ks[i]] = o[ks[i]]||{}; o = o[ks[i]]; }
+    o[ks[ks.length-1]] = val;
+  }
+
+  function fillForm(s){
+    document.querySelectorAll("[data-k]").forEach(inp=>{
+      const v = getPath(s, inp.dataset.k);
+      if (document.activeElement !== inp) inp.value = v ?? "";
+    });
+    document.querySelectorAll("[data-show]").forEach(cb=>{
+      cb.checked = !!getPath(s, inp_show(cb.dataset.show));
+    });
+  }
+  function inp_show(section){ return section + ".show"; }
+
+  async function loadState(){
+    const r = await fetch("/state"); state = await r.json(); fillForm(state);
+  }
+
+  async function update(patch){
+    try{
+      const r = await fetch("/update",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(patch)});
+      const j = await r.json(); if (j.state) state = j.state;
+    }catch(e){ console.error(e); }
+  }
+
+  // 토글 스위치 → 즉시 반영
+  document.querySelectorAll("[data-show]").forEach(cb=>{
+    cb.addEventListener("change",()=>{
+      const section = cb.dataset.show;
+      update({ [section]: { show: cb.checked } });
+    });
+  });
+
+  // 입력 → 디바운스 적용
+  let timer=null;
+  function buildPatchFromForm(){
+    const patch={};
+    document.querySelectorAll("[data-k]").forEach(inp=>{
+      let v = inp.value;
+      if (inp.type === "number") v = v===""?0:Number(v);
+      setPath(patch, inp.dataset.k, v);
+    });
+    return patch;
+  }
+  document.querySelectorAll("[data-k]").forEach(inp=>{
+    inp.addEventListener("input",()=>{
+      clearTimeout(timer);
+      timer=setTimeout(()=>update(buildPatchFromForm()), 350);
+    });
+  });
+
+  document.getElementById("save").addEventListener("click",()=>update(buildPatchFromForm()));
+  document.getElementById("reset").addEventListener("click",async()=>{
+    if(!confirm("기본값(이미지 디자인)으로 초기화할까요?")) return;
+    await update({__reset:true}); await loadState();
+  });
+
+  // 점수 빠른 조정
+  document.querySelectorAll("[data-score]").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const act = btn.dataset.score;
+      const k = act.startsWith("home") ? "homeScore" : "awayScore";
+      let cur = Number(getPath(state,"scoreboard."+k))||0;
+      cur += act.endsWith("+") ? 1 : -1; if (cur<0) cur=0;
+      const inp = document.querySelector(`[data-k="scoreboard.${k}"]`);
+      if (inp) inp.value = cur;
+      update({ scoreboard: { [k]: cur } });
+    });
+  });
+
+  // 다른 곳(또는 오버레이)에서 바뀐 상태도 폼에 동기화
+  const es = new EventSource("/events");
+  es.onopen = ()=>{ statusEl.classList.add("on"); statusTxt.textContent="연결됨"; };
+  es.onmessage = (e)=>{ try{ state = JSON.parse(e.data); fillForm(state); }catch{} };
+  es.onerror = ()=>{ statusEl.classList.remove("on"); statusTxt.textContent="연결 끊김 — 재연결 중"; };
+
+  loadState();
+</script>
+</body>
+</html>

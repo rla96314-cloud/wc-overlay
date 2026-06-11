@@ -1,0 +1,10 @@
+{
+  "name": "wc-overlay",
+  "version": "1.0.0",
+  "description": "월드컵 중계 스타일 vMix 오버레이 (컨트롤 + 오버레이 분리)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}

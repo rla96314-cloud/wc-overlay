@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>WC Overlay</title>
+<style>
+  /* ── vMix 브라우저 소스: 1920x1080, 투명 배경 ── */
+  :root{
+    --maroon:#6b1f3f;        /* 카타르 월드컵 메인 마룬 */
+    --maroon-dark:#561730;
+    --maroon-deep:#3f0f22;
+    --gold:#caa15a;
+    --panel:#f1eef0;         /* 골박스 흰 패널 */
+    --panel-edge:#d8d2d6;
+    --text-dark:#5a1730;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    width:1920px;height:1080px;overflow:hidden;
+    background:transparent;
+    font-family:"Pretendard","Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #stage{position:relative;width:1920px;height:1080px;}
+
+  .hidden{opacity:0 !important;transform:translateY(-12px);pointer-events:none;}
+  .el{transition:opacity .35s ease, transform .35s ease;}
+
+  .flag{
+    display:inline-flex;align-items:center;justify-content:center;
+    line-height:1;border-radius:3px;overflow:hidden;
+    background:#fff;
+  }
+
+  /* ───────── 스코어보드 (좌상단) ───────── */
+  #scoreboard{position:absolute;left:90px;top:60px;width:700px;
+    filter:drop-shadow(0 8px 22px rgba(0,0,0,.45));}
+  .sb-title{
+    background:linear-gradient(180deg,#7a2547,#5d1834);
+    color:#f3e7ec;font-size:25px;font-weight:800;letter-spacing:.5px;
+    text-align:center;padding:11px 0 10px;border-radius:6px 6px 0 0;
+    display:flex;align-items:center;justify-content:center;gap:26px;
+  }
+  .sb-title .round{color:#e9c87f;font-weight:800;}
+  .sb-body{display:flex;align-items:stretch;height:78px;}
+  .sb-team{flex:1;display:flex;align-items:center;background:linear-gradient(180deg,#5f1a37,#4c1429);}
+  .sb-team.home{border-radius:0 0 0 6px;}
+  .sb-team.away{flex-direction:row-reverse;border-radius:0 0 6px 0;}
+  .sb-team .flag{width:64px;height:46px;font-size:38px;margin:0 14px;flex:none;
+    box-shadow:0 0 0 2px rgba(255,255,255,.85);}
+  .sb-team .name{color:#fff;font-size:34px;font-weight:800;letter-spacing:.5px;
+    white-space:nowrap;}
+  .sb-team.away .name{margin-right:auto;padding-right:6px;}
+  .sb-team.home .name{margin-left:auto;padding-left:6px;}
+  .sb-score{
+    flex:none;width:200px;display:flex;align-items:center;justify-content:center;gap:18px;
+    background:linear-gradient(180deg,#360c1d,#280714);color:#fff;
+    font-size:52px;font-weight:900;
+  }
+  .sb-score .diamond{
+    width:26px;height:26px;background:linear-gradient(135deg,#caa15a,#8a6c2f);
+    transform:rotate(45deg);box-shadow:0 0 8px rgba(202,161,90,.6);
+  }
+  .sb-clock{
+    margin:0 auto;width:240px;background:linear-gradient(180deg,#4c1429,#360c1d);
+    color:#fff;font-size:30px;font-weight:800;letter-spacing:2px;text-align:center;
+    padding:7px 0 8px;border-radius:0 0 7px 7px;
+    box-shadow:0 6px 14px rgba(0,0,0,.4);
+  }
+
+  /* ───────── 우상단 배너 ───────── */
+  #banner{position:absolute;right:80px;top:60px;width:330px;
+    background:linear-gradient(180deg,#6b1f3f,#4c1429);
+    border-radius:8px;padding:18px 22px;color:#fff;
+    box-shadow:0 8px 22px rgba(0,0,0,.45);}
+  #banner .b1{font-size:34px;font-weight:900;letter-spacing:.5px;}
+  #banner .b2{display:flex;align-items:center;gap:12px;margin-top:8px;
+    font-size:33px;font-weight:900;}
+  #banner .b2 .flag{width:52px;height:36px;font-size:30px;
+    box-shadow:0 0 0 2px rgba(255,255,255,.85);}
+
+  /* ───────── 중앙 골 알림 ───────── */
+  #goal{position:absolute;left:50%;top:355px;transform:translateX(-50%);
+    display:flex;align-items:stretch;width:740px;height:175px;
+    filter:drop-shadow(0 14px 30px rgba(0,0,0,.5));}
+  #goal.hidden{transform:translateX(-50%) translateY(-12px);}
+  .goal-left{flex:none;width:215px;background:var(--maroon);
+    display:flex;align-items:center;justify-content:center;gap:18px;
+    border-radius:6px 0 0 6px;color:#fff;}
+  .goal-ball{font-size:62px;line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.4));}
+  .goal-min{font-size:54px;font-weight:900;}
+  .goal-min .ap{font-size:32px;vertical-align:super;}
+  .goal-right{flex:1;background:linear-gradient(180deg,#fbfafb,#e9e4e7);
+    border-radius:0 6px 6px 0;display:flex;flex-direction:column;justify-content:center;
+    padding-left:46px;position:relative;overflow:hidden;}
+  .goal-right::after{ /* 우측 사선 컷 느낌 */
+    content:"";position:absolute;right:-40px;bottom:-40px;width:140px;height:140px;
+    background:var(--maroon);transform:rotate(45deg);opacity:.0;
+  }
+  .goal-headline{color:var(--text-dark);font-size:48px;font-weight:900;letter-spacing:.5px;}
+  .goal-player{color:#2a2a2a;font-size:42px;font-weight:800;margin-top:6px;}
+
+  /* ───────── 좌하단 중계진 ───────── */
+  #crew{position:absolute;left:90px;bottom:165px;width:380px;
+    filter:drop-shadow(0 6px 16px rgba(0,0,0,.4));}
+  .crew-row{display:flex;align-items:center;background:linear-gradient(180deg,#6b1f3f,#4c1429);
+    height:58px;padding:0 22px;}
+  .crew-row.top{border-radius:7px 7px 0 0;}
+  .crew-row.bot{border-radius:0 0 7px 7px;border-top:1px solid rgba(255,255,255,.12);}
+  .crew-icon{width:34px;font-size:26px;color:#e9c87f;text-align:center;margin-right:8px;}
+  .crew-name{color:#fff;font-size:30px;font-weight:900;}
+  .crew-role{color:#e7cdd8;font-size:23px;font-weight:600;margin-left:12px;}
+
+  /* ───────── 우하단 다음경기 ───────── */
+  #next{position:absolute;right:80px;bottom:150px;width:380px;
+    border-radius:8px;overflow:hidden;
+    box-shadow:0 8px 22px rgba(0,0,0,.45);}
+  .next-head{background:linear-gradient(180deg,#6b1f3f,#561730);
+    color:#fff;text-align:center;font-size:30px;font-weight:900;padding:12px 0;}
+  .next-body{background:linear-gradient(180deg,#fbfafb,#ece7ea);padding:18px 0 20px;}
+  .next-date{text-align:center;color:var(--text-dark);font-size:30px;font-weight:900;
+    margin-bottom:14px;}
+  .next-teams{display:flex;align-items:center;justify-content:center;gap:22px;}
+  .next-team{display:flex;align-items:center;gap:12px;color:#222;font-size:30px;font-weight:900;}
+  .next-team.away{flex-direction:row-reverse;}
+  .next-team .flag{width:48px;height:34px;font-size:28px;box-shadow:0 0 0 1px #ccc;}
+  .next-vs{color:#9a6;font-size:24px;font-weight:900;color:#777;}
+
+  /* ───────── 하단 뉴스 티커 ───────── */
+  #ticker{position:absolute;left:90px;right:80px;bottom:70px;height:56px;
+    display:flex;align-items:stretch;border-radius:6px;overflow:hidden;
+    box-shadow:0 6px 16px rgba(0,0,0,.4);}
+  .ticker-label{flex:none;background:linear-gradient(180deg,#8a2750,#641a39);
+    color:#fff;font-size:27px;font-weight:900;display:flex;align-items:center;
+    padding:0 26px;letter-spacing:1px;}
+  .ticker-track{flex:1;background:linear-gradient(180deg,#5d1834,#420f24);
+    overflow:hidden;position:relative;}
+  .ticker-text{position:absolute;top:50%;transform:translateY(-50%);white-space:nowrap;
+    color:#fff;font-size:28px;font-weight:700;left:100%;
+    animation:scroll-left 18s linear infinite;}
+  @keyframes scroll-left{
+    from{transform:translate(0,-50%);}
+    to{transform:translate(calc(-100% - 1200px),-50%);}
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <!-- 스코어보드 -->
+  <div id="scoreboard" class="el">
+    <div class="sb-title"><span id="sb-meta"></span><span class="round" id="sb-round"></span></div>
+    <div class="sb-body">
+      <div class="sb-team home">
+        <span class="flag" id="sb-home-flag"></span>
+        <span class="name" id="sb-home-name"></span>
+      </div>
+      <div class="sb-score">
+        <span id="sb-home-score"></span>
+        <span class="diamond"></span>
+        <span id="sb-away-score"></span>
+      </div>
+      <div class="sb-team away">
+        <span class="flag" id="sb-away-flag"></span>
+        <span class="name" id="sb-away-name"></span>
+      </div>
+    </div>
+    <div class="sb-clock" id="sb-clock"></div>
+  </div>
+
+  <!-- 우상단 배너 -->
+  <div id="banner" class="el">
+    <div class="b1" id="bn-line1"></div>
+    <div class="b2"><span id="bn-line2"></span><span class="flag" id="bn-flag"></span></div>
+  </div>
+
+  <!-- 중앙 골 알림 -->
+  <div id="goal" class="el">
+    <div class="goal-left">
+      <span class="goal-ball">⚽</span>
+      <span class="goal-min" id="gl-min"></span>
+    </div>
+    <div class="goal-right">
+      <div class="goal-headline" id="gl-headline"></div>
+      <div class="goal-player" id="gl-player"></div>
+    </div>
+  </div>
+
+  <!-- 좌하단 중계진 -->
+  <div id="crew" class="el">
+    <div class="crew-row top">
+      <span class="crew-icon">🎙</span>
+      <span class="crew-name" id="cr-caster"></span>
+      <span class="crew-role" id="cr-caster-role"></span>
+    </div>
+    <div class="crew-row bot">
+      <span class="crew-icon"></span>
+      <span class="crew-name" id="cr-analyst"></span>
+      <span class="crew-role" id="cr-analyst-role"></span>
+    </div>
+  </div>
+
+  <!-- 우하단 다음경기 -->
+  <div id="next" class="el">
+    <div class="next-head" id="nx-label"></div>
+    <div class="next-body">
+      <div class="next-date" id="nx-date"></div>
+      <div class="next-teams">
+        <div class="next-team home"><span class="name" id="nx-home-name"></span><span class="flag" id="nx-home-flag"></span></div>
+        <div class="next-vs">VS</div>
+        <div class="next-team away"><span class="name" id="nx-away-name"></span><span class="flag" id="nx-away-flag"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 하단 뉴스 티커 -->
+  <div id="ticker" class="el">
+    <div class="ticker-label" id="tk-label"></div>
+    <div class="ticker-track"><div class="ticker-text" id="tk-text"></div></div>
+  </div>
+
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const setText = (id, v) => { const e = $(id); if (e) e.textContent = v ?? ""; };
+  const toggle = (id, show) => { const e = $(id); if (e) e.classList.toggle("hidden", !show); };
+
+  function render(s) {
+    // 스코어보드
+    setText("sb-meta", `${s.scoreboard.title}`);
+    setText("sb-round", s.scoreboard.round);
+    setText("sb-home-flag", s.scoreboard.homeFlag);
+    setText("sb-home-name", s.scoreboard.homeName);
+    setText("sb-home-score", s.scoreboard.homeScore);
+    setText("sb-away-score", s.scoreboard.awayScore);
+    setText("sb-away-flag", s.scoreboard.awayFlag);
+    setText("sb-away-name", s.scoreboard.awayName);
+    setText("sb-clock", s.scoreboard.clock);
+    toggle("scoreboard", s.scoreboard.show);
+
+    // 배너
+    setText("bn-line1", s.banner.line1);
+    setText("bn-line2", s.banner.line2);
+    setText("bn-flag", s.banner.flag);
+    toggle("banner", s.banner.show);
+
+    // 골 (분에 ' 가 들어오면 위첨자로)
+    const m = String(s.goal.minute || "");
+    $("gl-min").innerHTML = m.replace(/'/g, "<span class='ap'>'</span>");
+    setText("gl-headline", s.goal.headline);
+    setText("gl-player", s.goal.player);
+    toggle("goal", s.goal.show);
+
+    // 중계진
+    setText("cr-caster", s.crew.caster);
+    setText("cr-caster-role", s.crew.casterRole);
+    setText("cr-analyst", s.crew.analyst);
+    setText("cr-analyst-role", s.crew.analystRole);
+    toggle("crew", s.crew.show);
+
+    // 다음경기
+    setText("nx-label", s.next.label);
+    setText("nx-date", s.next.datetime);
+    setText("nx-home-name", s.next.homeName);
+    setText("nx-home-flag", s.next.homeFlag);
+    setText("nx-away-name", s.next.awayName);
+    setText("nx-away-flag", s.next.awayFlag);
+    toggle("next", s.next.show);
+
+    // 티커
+    setText("tk-label", s.ticker.label);
+    if ($("tk-text").textContent !== s.ticker.text) setText("tk-text", s.ticker.text);
+    toggle("ticker", s.ticker.show);
+  }
+
+  // SSE 연결
+  const es = new EventSource("/events");
+  es.onmessage = (e) => { try { render(JSON.parse(e.data)); } catch {} };
+  es.onerror = () => {/* 자동 재연결 */};
+</script>
+</body>
+</html>
