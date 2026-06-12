@@ -2,3 +2,7 @@
 .DS_Store
 node_modules/
 *.log
+preset.local.js
+.puppeteer-cache/
+dist/
+build-exe/

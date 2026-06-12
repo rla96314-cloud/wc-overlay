@@ -148,6 +148,7 @@ const DEFAULT_STATE = {
     minBalloons: 0,          // 이 개수 이상만 표시(0=전부)
     toBanner: true,          // 가운데 배너로 표시
     toTicker: true,          // 하단 뉴스 티커에 흘려보내기
+    tickerSec: 25,           // 티커에 머무는 시간(초) — 지나면 자동 제거
   },
   donationEvent: { token: 0, text: "", donor: "", balloons: 0, amount: 0, message: "" },
 };
@@ -172,7 +173,13 @@ function deepMerge(base, patch) {
   return base;
 }
 
+// 빌드용 로컬 프리셋(있으면): API 키 등 코드에 박아두기 — public repo에는 미포함(.gitignore)
+let PRESET = null;
+try { PRESET = require("./preset.local"); deepMerge(DEFAULT_STATE, PRESET); console.log("프리셋(preset.local) 적용됨"); } catch {}
+
 let state = loadState();
+// 프리셋 키는 저장된 값이 비어있으면 채워줌(빈 문자열이 덮어쓰는 것 방지)
+if (PRESET && PRESET.api) for (const k of Object.keys(PRESET.api)) { if (!state.api[k]) state.api[k] = PRESET.api[k]; }
 // 재시작 시 타이머는 멈춘 상태로
 state.timer.running = false; state.timer.startedAt = null;
 // 재시작 시 감시는 꺼진 상태(수동 시작)
@@ -420,12 +427,23 @@ function fireDonation(ev) {
     const dur = Number(state.donation.durationSec) || 6;
     if (dur > 0) donationHideTimer = setTimeout(() => { state.donation.show = false; saveState(state); broadcast(); }, dur * 1000);
   }
-  // 하단 뉴스 티커에 흘려보내기 (최근 6건 유지)
+  // 하단 뉴스 티커에 흘려보내기 (최근 6건 유지, tickerSec 후 자동 제거)
   if (state.donation.toTicker !== false) {
     state.ticker.feed = [{ text, ts: Date.now() }, ...(state.ticker.feed || [])].slice(0, 6);
+    const ttl = (Number(state.donation.tickerSec) || 25) * 1000;
+    setTimeout(pruneFeed, ttl + 200);
   }
   saveState(state); broadcast();
 }
+// 오래된 후원 피드 항목 제거(자동 사라짐) — 바뀌면 브로드캐스트
+function pruneFeed() {
+  const ttl = (Number(state.donation && state.donation.tickerSec) || 25) * 1000;
+  const now = Date.now();
+  const feed = (state.ticker && state.ticker.feed) || [];
+  const kept = feed.filter((f) => f && f.ts && (now - f.ts) < ttl);
+  if (kept.length !== feed.length) { state.ticker.feed = kept; saveState(state); broadcast(); }
+}
+setInterval(pruneFeed, 5000);  // 백업: 5초마다 만료분 정리
 // 위플랩 감시기 이벤트 연결
 if (watcher) {
   watcher.onEvent((ev) => fireDonation(ev));
