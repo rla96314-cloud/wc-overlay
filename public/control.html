@@ -355,6 +355,13 @@
       </div>
     </div>
     <div class="hint">포메이션은 <b>줄 합 + GK = 11</b>이어야 정확히 배치됩니다(예: 4-3-3 → GK+4+3+3). 선수 순서: GK → 수비 → 미드 → 공격. 팀 이름은 스코어보드 값을 사용합니다.</div>
+    <div style="font-weight:800;margin:14px 0 6px">영문 → 한글 이름 매핑</div>
+    <div class="field"><textarea id="namemap" rows="5" placeholder="영문이름=한글이름 (한 줄에 하나)&#10;Heung-Min Son=손흥민"></textarea></div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn-ghost" id="namemap-fill">현재 선수 이름으로 채우기</button>
+      <button class="btn-primary" id="namemap-apply">한글 적용</button>
+    </div>
+    <div class="hint">라인업을 불러오면 이 매핑으로 자동 한글화됩니다. 안 바뀐 이름은 <b>현재 선수 이름으로 채우기</b> → 빈 칸에 한글 입력 → <b>한글 적용</b>. (대한민국 주요선수는 미리 등록돼 있어요.)</div>
   </div>
 
   <!-- 레이아웃 -->
@@ -437,6 +444,11 @@
     if (!$("#cue-away").contains(document.activeElement)) renderCue("away", s);
     // 스코어 예측 목록
     if (!$("#predict-list").contains(document.activeElement)) renderPredictList(s);
+    // 이름 매핑 텍스트영역 (편집 중이면 건드리지 않음)
+    const nm = $("#namemap");
+    if (nm && document.activeElement !== nm) {
+      nm.value = Object.entries((s.formation && s.formation.nameMap) || {}).map(([k, v]) => `${k}=${v}`).join("\n");
+    }
     // 볼륨 표시
     const volEl = $("#volval"); if (volEl) volEl.textContent = Math.round((Number(s.sound?.volume) ?? 0.8) * 100) + "%";
     // 위플랩 감시 상태
@@ -724,6 +736,23 @@
     const j = await post("/api/lineups", { afKey: getPath(state, "api.afKey"), afFixture: getPath(state, "api.afFixture") });
     if (j.ok) { out.textContent = `불러옴: ${j.info?.home || ""} ${j.info?.homeFormation || ""} vs ${j.info?.away || ""} ${j.info?.awayFormation || ""}`; }
     else { out.className = "apiout err"; out.textContent = "오류: " + j.error; }
+  });
+  // 이름 매핑: 현재 선수 이름으로 채우기(기존 매핑값 유지)
+  $("#namemap-fill").addEventListener("click", () => {
+    const cur = {}; Object.assign(cur, (state.formation && state.formation.nameMap) || {});
+    const players = [...(state.formation?.homePlayers || []), ...(state.formation?.awayPlayers || [])];
+    for (const p of players) { const n = (p.name || "").trim(); if (n && !(n in cur)) cur[n] = ""; }
+    $("#namemap").value = Object.entries(cur).map(([k, v]) => `${k}=${v}`).join("\n");
+  });
+  // 이름 매핑: 적용(매핑 저장 + 현재 선수에 즉시 한글화)
+  $("#namemap-apply").addEventListener("click", async () => {
+    const nameMap = {};
+    $("#namemap").value.split(/\n/).forEach((l) => {
+      const i = l.indexOf("="); if (i < 1) return;
+      const k = l.slice(0, i).trim(), v = l.slice(i + 1).trim();
+      if (k) nameMap[k] = v;
+    });
+    await post("/formation/applynames", { nameMap });
   });
 
   // 초기화

@@ -123,6 +123,14 @@ const DEFAULT_STATE = {
     awayFormation: "4-3-3",
     homeColor: { fill: "#2552ab", text: "#ffffff" },   // 유니폼/번호 색 (API 자동 또는 수동 지정)
     awayColor: { fill: "#ab2727", text: "#ffffff" },
+    // 영문→한글 이름 매핑 (라인업 불러올 때 자동 치환). 컨트롤에서 추가/수정.
+    nameMap: {
+      "Heung-Min Son": "손흥민", "Min-Jae Kim": "김민재", "Kang-In Lee": "이강인",
+      "Hee-Chan Hwang": "황희찬", "In-Beom Hwang": "황인범", "Jae-Sung Lee": "이재성",
+      "Seung-Gyu Kim": "김승규", "Hyeon-Woo Jo": "조현우", "Gue-Sung Cho": "조규성",
+      "Young-Gwon Kim": "김영권", "Moon-Hwan Kim": "김문환", "Jin-Su Kim": "김진수",
+      "Woo-Young Jung": "정우영", "Seung-Ho Paik": "백승호", "Hyun-Gyu Oh": "오현규",
+    },
     // 선수 배열: [GK, 수비줄…, 미드줄…, 공격줄…] 순서 (포메이션 줄 합 + GK = 11)
     homePlayers: [
       { num: 1, name: "김승규" }, { num: 2, name: "김문환" }, { num: 4, name: "김민재" },
@@ -358,6 +366,19 @@ async function syncMatch() {
   saveState(state); broadcast();
 }
 
+// 영문→한글 이름 치환 (표기/순서 달라도 매칭되게 정규화 + 정렬키)
+function normName(s) { return String(s || "").toLowerCase().replace(/[^a-z가-힣]/g, ""); }
+function sortName(s) { return String(s || "").toLowerCase().replace(/[.]/g, "").split(/[\s\-]+/).filter(Boolean).sort().join(""); }
+function applyNameMap(players) {
+  const map = state.formation.nameMap || {};
+  const byNorm = {}, bySort = {};
+  for (const k of Object.keys(map)) { if (map[k]) { byNorm[normName(k)] = map[k]; bySort[sortName(k)] = map[k]; } }
+  return (players || []).map((p) => {
+    const ko = byNorm[normName(p.name)] || bySort[sortName(p.name)];
+    return ko ? { ...p, name: ko } : p;
+  });
+}
+
 // ── API-Football (포메이션/라인업) ───────────────────────────
 async function afFetch(pathQuery) {
   if (!state.api.afKey) throw new Error("API-Football 키가 없습니다 (컨트롤에서 입력).");
@@ -398,9 +419,9 @@ async function loadLineups() {
   const toColor = (t) => { const c = t.team?.colors?.player; return c && c.primary ? { fill: "#" + c.primary, text: "#" + (c.number || "ffffff") } : null; };
   const home = arr[0], away = arr[1] || {};
   if (home.formation) state.formation.homeFormation = home.formation;
-  if (home.startXI) state.formation.homePlayers = toPlayers(home.startXI);
+  if (home.startXI) state.formation.homePlayers = applyNameMap(toPlayers(home.startXI));
   if (away.formation) state.formation.awayFormation = away.formation;
-  if (away.startXI) state.formation.awayPlayers = toPlayers(away.startXI);
+  if (away.startXI) state.formation.awayPlayers = applyNameMap(toPlayers(away.startXI));
   const hc = toColor(home); if (hc) state.formation.homeColor = hc;
   const ac = toColor(away); if (ac) state.formation.awayColor = ac;
   state.formation.show = true;
@@ -596,6 +617,16 @@ const server = http.createServer(async (req, res) => {
       saveState(state);
       try { const r = await loadLineups(); return json(res, 200, { ok: true, info: r }); }
       catch (e) { return json(res, 200, { ok: false, error: e.message }); }
+    }
+
+    // 이름 한글 매핑 적용 (매핑 저장 + 현재 선수에 즉시 적용)
+    if (url === "/formation/applynames" && req.method === "POST") {
+      const body = JSON.parse((await readBody(req)) || "{}");
+      if (body.nameMap && typeof body.nameMap === "object") state.formation.nameMap = body.nameMap;
+      state.formation.homePlayers = applyNameMap(state.formation.homePlayers);
+      state.formation.awayPlayers = applyNameMap(state.formation.awayPlayers);
+      saveState(state); broadcast();
+      return json(res, 200, { ok: true });
     }
 
     // 위플랩 별풍선 감시 시작/정지/테스트
