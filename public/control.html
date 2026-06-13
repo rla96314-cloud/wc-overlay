@@ -92,6 +92,7 @@
   .btnbar{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;align-items:center;}
   .apiout{font-size:12px;margin-top:8px;color:var(--muted);}
   .apiout.err{color:#f0a0a0;}
+  .locked-note{background:#170f1e;border:1px dashed var(--line);border-radius:8px;padding:9px 11px;font-size:13px;color:var(--ok);font-weight:700;}
 </style>
 </head>
 <body>
@@ -172,7 +173,8 @@
       <label class="sw" title="라이브 점수 자동동기화"><input type="checkbox" data-bool="api.liveSync"><span class="track"></span></label>
     </h2>
     <div class="row">
-      <div class="field"><label>API 토큰</label><input data-k="api.token" placeholder="football-data.org 무료 토큰"></div>
+      <div class="field" id="tok-field"><label>API 토큰</label><input data-k="api.token" placeholder="football-data.org 무료 토큰"></div>
+      <div class="field" id="tok-locked" style="display:none"><label>API 토큰</label><div class="locked-note">🔒 코드에 내장됨</div></div>
       <div class="field w-sm"><label>대회코드</label><input data-k="api.competition" placeholder="WC"></div>
     </div>
     <div class="row">
@@ -321,8 +323,11 @@
       <label class="sw"><input type="checkbox" data-bool="formation.show"><span class="track"></span></label>
     </h2>
     <datalist id="formlist"><option value="4-3-3"></option><option value="4-4-2"></option><option value="4-2-3-1"></option><option value="4-1-4-1"></option><option value="3-4-3"></option><option value="3-5-2"></option><option value="5-3-2"></option></datalist>
-    <div class="row">
+    <div class="row" id="afkey-row">
       <div class="field"><label>API-Football 키 (자동 불러오기)</label><input data-k="api.afKey" placeholder="api-sports.io 무료키"></div>
+    </div>
+    <div class="row" id="afkey-locked" style="display:none">
+      <div class="field"><label>API-Football 키</label><div class="locked-note">🔒 코드에 내장됨 — 입력 불필요</div></div>
     </div>
     <div class="row">
       <div class="field w-sm"><label>리그ID</label><input id="af-league" value="1" title="1 = 월드컵"></div>
@@ -454,6 +459,11 @@
     // 위플랩 감시 상태
     const wst = $("#weflab-status"), wtx = $("#weflab-txt");
     if (wst && wtx) { const on = !!(s.weflab && s.weflab.watching); wst.classList.toggle("on", on); wtx.textContent = on ? `감시중 (프레임 ${s.weflab.frames || 0})` : "정지"; }
+    // 키가 코드에 박혀 있으면(locked) 입력칸 숨기고 '내장됨' 표시
+    const locked = !!(s.api && s.api.locked);
+    const sd = (id, show) => { const e = $("#" + id); if (e) e.style.display = show ? "" : "none"; };
+    sd("tok-field", !locked); sd("tok-locked", locked);
+    sd("afkey-row", !locked); sd("afkey-locked", locked);
     // 포메이션 선수 텍스트영역 (편집 중이면 건드리지 않음)
     document.querySelectorAll("[data-players]").forEach((ta) => {
       if (document.activeElement === ta) return;

@@ -191,8 +191,10 @@ let PRESET = null;
 try { PRESET = require("./preset.local"); deepMerge(DEFAULT_STATE, PRESET); console.log("프리셋(preset.local) 적용됨"); } catch {}
 
 let state = loadState();
-// 프리셋 키는 저장된 값이 비어있으면 채워줌(빈 문자열이 덮어쓰는 것 방지)
-if (PRESET && PRESET.api) for (const k of Object.keys(PRESET.api)) { if (!state.api[k]) state.api[k] = PRESET.api[k]; }
+// 프리셋(코드 박힘) 키는 항상 우선 적용 — 저장값/입력으로 지워지지 않게 고정
+if (PRESET && PRESET.api) for (const k of Object.keys(PRESET.api)) { if (PRESET.api[k]) state.api[k] = PRESET.api[k]; }
+// 키가 코드에 박혀 있으면 잠금 → 컨트롤에서 입력칸 숨김 + 변경 무시
+state.api.locked = !!(PRESET && PRESET.api && (PRESET.api.token || PRESET.api.afKey));
 // 재시작 시 타이머는 멈춘 상태로
 state.timer.running = false; state.timer.startedAt = null;
 // 재시작 시 감시는 꺼진 상태(수동 시작)
@@ -548,7 +550,13 @@ const server = http.createServer(async (req, res) => {
     if (url === "/update" && req.method === "POST") {
       const patch = JSON.parse((await readBody(req)) || "{}");
       if (patch.__reset) { state = structuredCloneSafe(DEFAULT_STATE); }
-      else state = deepMerge(state, patch);
+      else {
+        // 키가 잠겨 있으면(코드 박힘) token/afKey 변경은 무시
+        if (state.api && state.api.locked && patch.api) { delete patch.api.token; delete patch.api.afKey; }
+        state = deepMerge(state, patch);
+      }
+      // 프리셋 키는 항상 재적용(어떤 경우에도 유지)
+      if (PRESET && PRESET.api) for (const k of Object.keys(PRESET.api)) { if (PRESET.api[k]) state.api[k] = PRESET.api[k]; }
       saveState(state); broadcast();
       return json(res, 200, { ok: true });
     }
