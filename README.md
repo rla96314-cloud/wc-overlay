@@ -10,11 +10,20 @@
 node server.js
 ```
 
-- **macOS**: `start.command` 더블클릭
-- **Windows**: `start.bat` 더블클릭 (Node.js LTS 설치 필요 — https://nodejs.org, 컨트롤 페이지 자동 오픈)
-- 포트 변경: `PORT=9000 node server.js` (Windows: `set PORT=9000 && node server.js`)
+- **Windows EXE(권장)**: `wc-overlay-portable-...exe` 더블클릭 — Node 설치·키 입력 불필요. 키·OSC·위플랩 설정이 코드에 박혀 있고 크롬도 내장. 창에 컨트롤이 뜨고, 오버레이는 표시되는 LAN 주소를 vMix에서 사용.
+- **macOS**: `start.command` 더블클릭 (Node.js 필요)
+- **Windows(소스)**: `start.bat` 더블클릭 (Node.js LTS 필요 — https://nodejs.org)
+- 포트 변경: `PORT=9000 node server.js`
 
-> Node.js 17 이상 필요. 별도 `npm install` 불필요 — 외부 패키지가 없습니다.
+### EXE 직접 빌드 (Windows portable)
+```bash
+npm install                 # electron, electron-builder, puppeteer
+# 위플랩 감시용 Windows 크롬을 번들에 받기(최초 1회)
+PUPPETEER_CACHE_DIR="$PWD/.puppeteer-cache" npx puppeteer browsers install chrome --platform win64
+npm run dist                # → dist/wc-overlay-portable-<버전>.exe
+```
+- 키를 박으려면 `preset.local.js`(있으면 자동 적용, .gitignore됨)에 `api.token`/`api.afKey` 등을 넣으세요.
+- 상태/사운드 업로드는 설치형에서 사용자 폴더(`%APPDATA%/wc-overlay`)에 저장됩니다.
 
 | 주소 | 용도 |
 |------|------|
