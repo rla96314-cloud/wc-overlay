@@ -185,6 +185,7 @@ async function ensureBrowser() {
   if (!browser || !browser.connected) {
     browser = await puppeteer.launch({
       headless: "new",
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,  // 패키징(exe) 시 내장 크롬
       args: [
         "--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage",
         "--autoplay-policy=no-user-gesture-required",

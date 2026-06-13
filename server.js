@@ -33,7 +33,12 @@ function lanIP() {
 }
 const LAN_IP = lanIP();
 let activePort = Number(PORT) || 8093;   // 포트 충돌 시 자동으로 다음 포트 사용
-const STATE_FILE = path.join(DIR, ".state.json");
+// 설치형(exe)에서는 설치 폴더가 읽기전용 → 쓰기 가능 폴더(WC_DATA_DIR)에 상태/업로드 저장
+const DATA_DIR = process.env.WC_DATA_DIR || DIR;
+const STATE_FILE = path.join(DATA_DIR, ".state.json");
+const SOUNDS_BUNDLED = path.join(DIR, "public", "sounds");      // 동봉 사운드(읽기)
+const SOUNDS_UPLOAD = path.join(DATA_DIR, "sounds");            // 업로드 사운드(쓰기)
+try { fs.mkdirSync(SOUNDS_UPLOAD, { recursive: true }); } catch {}
 
 // ── 기본 상태 ───────────────────────────────────────────────
 const DEFAULT_STATE = {
@@ -468,13 +473,15 @@ const server = http.createServer(async (req, res) => {
     if (url === "/control" || url === "/control.html") return serveFile(res, "control.html", "text/html; charset=utf-8");
     if (url === "/state") return json(res, 200, withClock(state));
 
-    // 사운드 파일 목록
+    // 사운드 파일 목록 (동봉 + 업로드 폴더 합침)
     if (url === "/sounds") {
-      let files = [];
-      try { files = fs.readdirSync(path.join(DIR, "public", "sounds")).filter((f) => /\.(mp3|wav|ogg|m4a|aac)$/i.test(f)); } catch {}
-      return json(res, 200, { files });
+      const set = new Set();
+      for (const d of [SOUNDS_BUNDLED, SOUNDS_UPLOAD]) {
+        try { fs.readdirSync(d).forEach((f) => { if (/\.(mp3|wav|ogg|m4a|aac)$/i.test(f)) set.add(f); }); } catch {}
+      }
+      return json(res, 200, { files: [...set] });
     }
-    // 사운드 파일 업로드 (내 PC에서 탐색해 올림 → public/sounds 에 저장)
+    // 사운드 파일 업로드 → 쓰기 가능한 업로드 폴더에 저장
     if (url === "/sounds/upload" && req.method === "POST") {
       const qm = (req.url.split("?")[1] || "").match(/(?:^|&)name=([^&]*)/);
       const raw = qm ? decodeURIComponent(qm[1]) : "upload.bin";
@@ -485,20 +492,22 @@ const server = http.createServer(async (req, res) => {
       req.on("end", () => {
         if (tooBig) return json(res, 200, { ok: false, error: "파일이 너무 큽니다 (40MB 초과)." });
         try {
-          fs.mkdirSync(path.join(DIR, "public", "sounds"), { recursive: true });
-          fs.writeFileSync(path.join(DIR, "public", "sounds", safe), Buffer.concat(chunks));
+          fs.mkdirSync(SOUNDS_UPLOAD, { recursive: true });
+          fs.writeFileSync(path.join(SOUNDS_UPLOAD, safe), Buffer.concat(chunks));
           console.log(`사운드 업로드: ${safe} (${size} bytes)`);
           return json(res, 200, { ok: true, file: safe });
         } catch (e) { return json(res, 200, { ok: false, error: e.message }); }
       });
       return;
     }
-    // 사운드 파일 제공 (/sounds/<파일>)
+    // 사운드 파일 제공 (업로드 폴더 우선, 없으면 동봉)
     if (url.startsWith("/sounds/")) {
       const f = decodeURIComponent(url.slice("/sounds/".length));
       if (f.includes("..") || f.includes("/")) return res.writeHead(403).end("forbidden");
       try {
-        const data = fs.readFileSync(path.join(DIR, "public", "sounds", f));
+        let fp = path.join(SOUNDS_UPLOAD, f);
+        if (!fs.existsSync(fp)) fp = path.join(SOUNDS_BUNDLED, f);
+        const data = fs.readFileSync(fp);
         const ext = (f.split(".").pop() || "").toLowerCase();
         const mime = { mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", m4a: "audio/mp4", aac: "audio/aac" }[ext] || "application/octet-stream";
         res.writeHead(200, { "Content-Type": mime, ...NOCACHE });

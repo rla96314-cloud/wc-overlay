@@ -2,12 +2,49 @@
   "name": "wc-overlay",
   "version": "1.0.0",
   "description": "월드컵 중계 스타일 vMix 오버레이 (컨트롤 + 오버레이 분리)",
-  "main": "server.js",
+  "main": "gui/main.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "gui": "electron gui/main.js",
+    "dist": "electron-builder --win --x64"
   },
   "license": "MIT",
   "dependencies": {
     "puppeteer": "^25.1.0"
+  },
+  "devDependencies": {
+    "electron": "^32.3.3",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.wcoverlay.app",
+    "productName": "wc-overlay",
+    "directories": {
+      "output": "dist"
+    },
+    "asar": false,
+    "files": [
+      "**/*",
+      "!.puppeteer-cache/**",
+      "!dist/**",
+      "!.git/**",
+      "!.claude/**",
+      "!**/*.log",
+      "!.state.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".puppeteer-cache",
+        "to": "puppeteer-cache"
+      }
+    ],
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "wc-overlay-portable-${version}.exe"
+    }
   }
 }
