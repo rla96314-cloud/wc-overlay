@@ -30,7 +30,10 @@
       "!.git/**",
       "!.claude/**",
       "!**/*.log",
-      "!.state.json"
+      "!.state.json",
+      "!**/*.exe",
+      "!**/*.bak",
+      "!**/*.7z"
     ],
     "extraResources": [
       {
